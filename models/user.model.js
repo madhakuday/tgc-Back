@@ -37,6 +37,7 @@ const userSchema = new mongoose.Schema({
       path: { type: String, default: "" },
       requestBody: { type: mongoose.Schema.Types.Mixed, default: {} },
       method: { type: String, default: "" },
+      headers: { type: mongoose.Schema.Types.Mixed, default: {} },
     },
     required: false,
   }

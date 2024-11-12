@@ -3,7 +3,6 @@ require('dotenv').config()
 const express = require('express');
 const bodyParser = require('body-parser');
 const routes = require('./routes');
-const multer = require('multer');
 const cors = require('cors');
 const errorHandler = require('./middlewares/errorHandler');
 const app = express();
@@ -13,7 +12,7 @@ require('./db')
 
 // cors
 app.use(cors())
-app.use(bodyParser.json());
+// app.use(bodyParser.json());
 app.use(express.json()); // Replaces app.use(bodyParser.json())
 
 app.use('/api/docs', express.static('public/docs'));

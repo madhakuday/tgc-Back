@@ -17,7 +17,7 @@ router.post(
       return sendErrorResponse(res, 'Invalid client or user type', 403);
     }
 
-    const { path, method } = client.configuration;
+    const { path, method, headers } = client.configuration;
     if (!path || !method) {
       return sendErrorResponse(res, 'Invalid client configuration', 400);
     }
@@ -26,6 +26,7 @@ router.post(
       const response = await axios({
         url: path,
         method: method.toLowerCase(),
+        headers: headers || {},
         data: { statusFlag: "SUCCESS", requestBody: configuration.requestBody }
       });
 

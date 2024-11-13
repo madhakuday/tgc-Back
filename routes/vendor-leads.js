@@ -5,7 +5,6 @@ const jwt = require('jsonwebtoken');
 const Lead = require('../models/lead.model');
 const asyncHandler = require('../middlewares/asyncHandler');
 const { sendSuccessResponse, sendErrorResponse } = require('../utils/responseHandler');
-const validate = require('../middlewares/validationMiddleware');
 
 const router = express.Router();
 
@@ -34,7 +33,7 @@ const defaultData = [
     { key: "first_name", q_id: "67211e35066e168369880d79" },
     { key: "last_name", q_id: "67211e35066e168369880d7a" },
     { key: "ip_address", q_id: "67211e35066e168369880d7e" },
-    { key: "ip_url", q_id: "6734b89a3e68b1eaf89adf78" },
+    { key: "lp_url", q_id: "6734b89a3e68b1eaf89adf78" },
     { key: "represented_by_attorney", q_id: "6729a906127c4b270ff85cc4" },
     { key: "summary", q_id: "6734b8e33e68b1eaf89adf88" },
     { key: "year_of_diagnosed", q_id: "6729b595127c4b270ff8648d" },
@@ -50,7 +49,7 @@ router.post(
         try {
             const userId = req.userId;
             const campId = req.campId;
-            const requestData = req.body;
+            const requestData = req.body.data;
 
             if (!campId) {
                 return sendErrorResponse(res, 'Camp id not provided', 404);

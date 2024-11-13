@@ -11,12 +11,13 @@ const { createLeadValidation, parseResponses } = require('../validators/leads')
 const validate = require('../middlewares/validationMiddleware');
 const ApiLogs = require('../models/api-logs.model');
 const Question = require('../models/question.model');
+const { onlyAdminStatus } = require('../utils/constant');
 
 const router = express.Router();
 
 router.get('/',
     asyncHandler(async (req, res) => {
-        const { page = 1, limit = 10, status, userType, id, assigned } = req.query;
+        const { page = 1, limit = 10, status, userType, campId = '', id, assigned } = req.query;
         const limitNum = parseInt(limit, 10);
         const pageNum = Math.max(1, parseInt(page, 10));
         const skip = (pageNum - 1) * limitNum;
@@ -33,6 +34,10 @@ router.get('/',
             searchQuery.userId = id;
         }
 
+        if (campId) {
+            searchQuery.campaignId = campId;
+        }
+
         if (userType === 'vendor' || userType === 'staff') {
             if (!userId) {
                 return sendErrorResponse(res, 'Vendor ID is required', 400);
@@ -40,20 +45,22 @@ router.get('/',
             searchQuery.userId = userId;
         }
 
+        // Check for staff verifier with assigned=true and filter out leads with onlyAdminStatus
         if (userType === 'staff' && req?.user?.role.includes('verifier') && assigned === 'true') {
             searchQuery = {
                 isActive: true,
                 verifier: userId
             };
+
+            // Filter out statuses that are part of onlyAdminStatus
+            searchQuery.status = { $nin: onlyAdminStatus };
+
             if (status) {
-                searchQuery.status = status;
+                searchQuery.status = { ...searchQuery.status, $eq: status };
             }
+
             delete searchQuery.userId;
         }
-
-        // if (assigned === 'true') {
-        // searchQuery.verifier = userId;
-        // }
 
         const totalLeads = await Lead.countDocuments(searchQuery);
 
@@ -225,12 +232,28 @@ router.post('/',
             if (existingLead) {
                 return sendErrorResponse(res, 'A lead with the same email or phone number already exists.', 400);
             }
-
-            const lastLead = await Lead.findOne().sort({ leadId: -1 });
-            const lastLeadNumber = lastLead ? parseInt(lastLead.leadId.split('-')[1]) : 0;
-            const newLeadNumber = lastLeadNumber + 1;
-            const leadId = `lead-${newLeadNumber}`;
-
+            let lastLeadNumber = 0;
+            let newLeadNumber;
+            let leadId;
+            
+            const lastLead = await Lead.findOne().sort({ createdAt: -1 });
+            if (lastLead) {
+                lastLeadNumber = parseInt(lastLead.leadId.split('-')[1]);
+            }
+            
+            do {
+                newLeadNumber = lastLeadNumber + 1;
+                leadId = `lead-${newLeadNumber}`;
+            
+                const existingLead = await Lead.findOne({ leadId });
+                
+                if (existingLead) {
+                    lastLeadNumber = newLeadNumber;
+                } else {
+                    break;
+                }
+            } while (true);
+            
             // Prepare media files
             const media = req.files.media ? req.files.media.map(file => ({
                 type: file.mimetype.includes('application') ? 'doc' : 'recording',
@@ -257,27 +280,21 @@ router.post('/',
 );
 
 router.put('/:leadId',
+    upload.fields([{ name: 'media', maxCount: 2 }]),
+    parseResponses,
     asyncHandler(async (req, res) => {
         try {
             const { leadId } = req.params;
-            const { status, remark, isActive, verifier } = req.body;
-
-            let parsedResponses = [];
-            if (req.body.responses) {
-                try {
-                    parsedResponses = req.body.responses.map((r) => JSON.parse(r));
-                } catch (err) {
-                    return res.status(400).json({ message: 'Invalid responses format' });
-                }
-            }
-
+            const { status, remark, isActive, verifier, responses} = req.body;
+            console.log('req.body', req.body);
+            
             const existingLead = await Lead.findOne({ leadId, isActive: true });
             if (!existingLead) {
                 return res.status(404).json({ message: 'Lead not found' });
             }
 
             const updateFields = {
-                ...(parsedResponses.length && { responses: parsedResponses }),
+                ...(responses && { responses }),
                 ...(status && { status }),
                 ...(remark && { remark }),
                 ...(verifier && { verifier }),

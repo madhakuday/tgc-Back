@@ -19,7 +19,10 @@ const questionSchema = new mongoose.Schema({
     },
     fixedId: {
         type: String
-    }
+    },
+    order: {
+        type: Number,
+    },
 }, { timestamps: true });
 
 

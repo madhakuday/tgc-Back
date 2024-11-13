@@ -16,17 +16,20 @@ router.get('/',
         const limitNum = parseInt(limit, 10);
         const pageNum = Math.max(1, parseInt(page, 10));
 
-        const searchQuery = search ? { title: { $regex: search, $options: 'i' }, isActive: true } : { isActive: true };
+        const searchQuery = search
+            ? { title: { $regex: search, $options: 'i' }, isActive: true }
+            : { isActive: true };
 
         const totalQuestions = await Question.countDocuments(searchQuery);
 
         let questions;
+        const skip = (pageNum - 1) * limitNum;
 
         if (limitNum === -1) {
-            questions = await Question.find(searchQuery);
+            questions = await Question.find(searchQuery).sort({ order: 1, _id: 1 });
         } else {
-            const skip = (pageNum - 1) * limitNum;
             questions = await Question.find(searchQuery)
+                .sort({ order: 1, _id: 1 })
                 .skip(skip)
                 .limit(limitNum);
         }

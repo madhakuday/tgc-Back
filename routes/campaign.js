@@ -69,11 +69,19 @@ router.get(
   asyncHandler(async (req, res) => {
     const userId = req.user.id;
 
-    const campaigns = await Campaign.find({ isActive: true });
+    // Retrieve the user's assigned campaign IDs
+    const user = await User.findById(userId);
+    if (!user || !user.campIds || user.campIds.length === 0) {
+      return sendSuccessResponse(res, { campaigns: [] }, 'No campaigns assigned to this user', 200);
+    }
+
+    // Find only the campaigns that match the assigned campaign IDs
+    const campaigns = await Campaign.find({ _id: { $in: user.campIds }, isActive: true });
 
     const campaignsWithLeadCounts = await Promise.all(
       campaigns.map(async (campaign) => {
-        const leadCount = await Lead.countDocuments({ campaignId: campaign._id, userId });
+        // Count leads associated with this campaign and user
+        const leadCount = await Lead.countDocuments({ campaignId: campaign._id, userId, isActive: true });
         return {
           campId: campaign.id,
           title: campaign.title,

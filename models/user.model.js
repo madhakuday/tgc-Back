@@ -40,6 +40,9 @@ const userSchema = new mongoose.Schema({
       headers: { type: mongoose.Schema.Types.Mixed, default: {} },
     },
     required: false,
+  },
+  vendor_api_token: {
+    type: String,
   }
 }, { timestamps: true });
 

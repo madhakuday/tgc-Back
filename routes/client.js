@@ -32,17 +32,15 @@ router.post(
         url: path,
         method: method.toLowerCase(),
         headers: headers || {},
-        data: { statusFlag: "SUCCESS", requestBody: filtered_obj}
+        data: filtered_obj
       });
 
-      const result = await logApiCall(clientId, leadId, configuration.requestBody, response.data, response.status);
+      const result = await logApiCall(clientId, leadId, filtered_obj, response?.data, response.status);
 
       if (result) {
-
         const existingLead = await Lead.findOne({ leadId, isActive: true });
-        const lead = await Lead.findByIdAndUpdate(existingLead.id, { clientId }, { new: true });
-
-        return sendSuccessResponse(res, configuration, 'Request sent and logged successfully', response.status);
+        await Lead.findByIdAndUpdate(existingLead?.id, { clientId }, { new: true });
+        return sendSuccessResponse(res, response.data, 'Request sent successfully', response.status);
       } else {
         throw new Error()
       }

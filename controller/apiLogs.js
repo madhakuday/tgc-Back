@@ -15,7 +15,7 @@ const logApiCall = async (clientId, leadId, requestBody, response, responseStatu
       requestBody,
       response,
       responseStatusCode,
-      isSuccess: responseStatusCode === 201
+      isSuccess: responseStatusCode === 201 || responseStatusCode === 200
     });
     return await apiLog.save();
   } catch (error) {

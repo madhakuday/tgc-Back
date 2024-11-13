@@ -33,12 +33,14 @@ const defaultData = [
     { key: "first_name", q_id: "67211e35066e168369880d79" },
     { key: "last_name", q_id: "67211e35066e168369880d7a" },
     { key: "ip_address", q_id: "67211e35066e168369880d7e" },
-    { key: "lp_url", q_id: "6734b89a3e68b1eaf89adf78" },
+    
+    { key: "lp_url", q_id: "673299bd7309a506a7db0fbd" },
     { key: "represented_by_attorney", q_id: "6729a906127c4b270ff85cc4" },
-    { key: "summary", q_id: "6734b8e33e68b1eaf89adf88" },
+    { key: "summary", q_id: "6733f279d1d333e7171e2c79" },
+
     { key: "year_of_diagnosed", q_id: "6729b595127c4b270ff8648d" },
-    { key: "injury", q_id: "6734b9113e68b1eaf89adf95" },
-    { key: "straightener_used", q_id: "6734b92f3e68b1eaf89adf9f" },
+    { key: "injury", q_id: "6733f2b5d1d333e7171e2c95" },
+    { key: "straightener_used", q_id: "6733f2cfd1d333e7171e2c9c" },
     { key: "trusted_form_certificate", q_id: "67211e35066e168369880d82" }
 ];
 

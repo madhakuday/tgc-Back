@@ -130,14 +130,14 @@ router.get('/:leadId',
             remark: lead.remark,
             media: lead.media,
             leadId: lead.leadId,
-            responses: lead.responses.map(resp => ({
-                questionId: resp.questionId._id,
+            responses: lead?.responses?.map(resp => ({
+                questionId: resp?.questionId?._id,
                 questionTitle: resp.questionId.title,
                 questionType: resp.questionId.type,
                 response: resp.response
             })),
             createdBy: {
-                userId: lead.userId._id,
+                userId: lead?.userId?._id,
                 name: lead.userId.name,
                 email: lead.userId.email,
                 userType: lead.userId.userType

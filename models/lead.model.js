@@ -63,7 +63,11 @@ const leadSchema = new mongoose.Schema({
             type: { type: String, enum: ['doc', 'recording'], required: true },
             url: { type: String, required: true }
         }
-    ]
+    ],
+    generated_by_api:{
+        type: Boolean,
+        default: false
+    }
 }, { timestamps: true });
 
 const Lead = mongoose.model('Lead', leadSchema);

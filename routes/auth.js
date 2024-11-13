@@ -22,11 +22,16 @@ router.post(
     const body = {
       name,
       email,
-      password,
+      // password,
       userType,
       role: [],
       campIds
     }
+
+    if (userType !== 'client' && password) {
+      body.password = password;
+    }
+
 
     if (userType === 'staff') {
       body.role = role

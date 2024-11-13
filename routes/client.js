@@ -23,25 +23,26 @@ router.post(
     }
 
     try {
+      const filtered_obj =  configuration.requestBody.reduce((acc, item) => {
+        acc[item.field_name] = item.response || "";
+        return acc;
+      }, {});
+
       const response = await axios({
         url: path,
         method: method.toLowerCase(),
         headers: headers || {},
-        data: { statusFlag: "SUCCESS", requestBody: configuration.requestBody }
+        data: { statusFlag: "SUCCESS", requestBody: filtered_obj}
       });
 
       const result = await logApiCall(clientId, leadId, configuration.requestBody, response.data, response.status);
 
       if (result) {
 
-        console.log('result', result)
         const existingLead = await Lead.findOne({ leadId, isActive: true });
-        console.log('existingLead', existingLead)
-
         const lead = await Lead.findByIdAndUpdate(existingLead.id, { clientId }, { new: true });
-        console.log('lead', lead);
 
-        return sendSuccessResponse(res, response.data, 'Request sent and logged successfully', response.status);
+        return sendSuccessResponse(res, configuration, 'Request sent and logged successfully', response.status);
       } else {
         throw new Error()
       }

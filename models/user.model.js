@@ -13,7 +13,9 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: function() {
+      return this.userType !== 'client';
+    },
   },
   userType: {
     type: String,
@@ -22,15 +24,15 @@ const userSchema = new mongoose.Schema({
   },
   isActive: {
     type: Boolean,
-    default: true
+    default: true,
   },
   campIds: {
     type: [String],
-    default: []
+    default: [],
   },
   role: {
     type: [String],
-    enum: ['verifier', 'lead_management']
+    enum: ['verifier', 'lead_management'],
   },
   configuration: {
     type: {
@@ -43,7 +45,7 @@ const userSchema = new mongoose.Schema({
   },
   vendor_api_token: {
     type: String,
-  }
+  },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

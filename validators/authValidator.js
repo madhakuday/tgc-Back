@@ -3,10 +3,10 @@ const { body } = require('express-validator');
 const registerValidation = [
     body('name').notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Please provide a valid email'),
-    body('password')
-      .isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
-      .matches(/\d/).withMessage('Password must contain a number')
-      .matches(/[a-zA-Z]/).withMessage('Password must contain a letter'),
+    // body('password')
+    //   .isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
+    //   .matches(/\d/).withMessage('Password must contain a number')
+    //   .matches(/[a-zA-Z]/).withMessage('Password must contain a letter'),
     body('userType').isIn(['client', 'vendor', 'admin', 'staff']).withMessage('Invalid user type'),
     body('role')
     .if(body('userType').equals('staff'))

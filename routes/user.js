@@ -43,11 +43,13 @@ router.post(
       const responseObj = lead.responses.find(
         (response) => response.questionId && response.questionId._id.toString() === configQuestion.question_id
       );
+      
       return {
         ...configQuestion,
-        response: responseObj ? responseObj.response : null
+        response: configQuestion?.default ? configQuestion?.default : (responseObj ? responseObj.response : null)
       };
     });
+
 
     return sendSuccessResponse(
       res,

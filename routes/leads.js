@@ -235,25 +235,25 @@ router.post('/',
             let lastLeadNumber = 0;
             let newLeadNumber;
             let leadId;
-            
+
             const lastLead = await Lead.findOne().sort({ createdAt: -1 });
             if (lastLead) {
                 lastLeadNumber = parseInt(lastLead.leadId.split('-')[1]);
             }
-            
+
             do {
                 newLeadNumber = lastLeadNumber + 1;
                 leadId = `lead-${newLeadNumber}`;
-            
+
                 const existingLead = await Lead.findOne({ leadId });
-                
+
                 if (existingLead) {
                     lastLeadNumber = newLeadNumber;
                 } else {
                     break;
                 }
             } while (true);
-            
+
             // Prepare media files
             const media = req.files.media ? req.files.media.map(file => ({
                 type: file.mimetype.includes('application') ? 'doc' : 'recording',
@@ -285,9 +285,9 @@ router.put('/:leadId',
     asyncHandler(async (req, res) => {
         try {
             const { leadId } = req.params;
-            const { status, remark, isActive, verifier, responses} = req.body;
+            const { status, remark, isActive, verifier, responses } = req.body;
             console.log('req.body', req.body);
-            
+
             const existingLead = await Lead.findOne({ leadId, isActive: true });
             if (!existingLead) {
                 return res.status(404).json({ message: 'Lead not found' });
@@ -325,9 +325,9 @@ router.put('/:leadId',
 
             await LeadHistory.create(historyData);
 
-            return res.status(200).json({ success: true, data: updatedLead });
+            return sendSuccessResponse(res, updatedLead, 'Lead updated successfully', 200);
         } catch (error) {
-            return res.status(500).json({ message: 'Something went wrong' });
+            return sendErrorResponse(res, 'Something went wrong!', 400);
         }
     })
 );

@@ -11,6 +11,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const clients = await User.find({
       userType: "client",
+      isActive: true,
       "configuration.path": { $ne: "" },
       "configuration.method": { $ne: "" }
     });

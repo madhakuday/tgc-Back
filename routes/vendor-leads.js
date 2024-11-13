@@ -38,7 +38,7 @@ const defaultData = [
     { key: "represented_by_attorney", q_id: "6729a906127c4b270ff85cc4" },
     { key: "summary", q_id: "6733f279d1d333e7171e2c79" },
     { key: "year_of_diagnosed", q_id: "6729b595127c4b270ff8648d" },
-    { key: "injury", q_id: "6733f2b5d1d333e7171e2c95" },
+    { key: "injury", q_id: "6729aeab127c4b270ff86112" },
     { key: "straightener_used", q_id: "6733f2cfd1d333e7171e2c9c" },
     { key: "trusted_form_certificate", q_id: "67211e35066e168369880d82" },
     { key: "zip_code", q_id: "67211e35066e168369880d7d" },

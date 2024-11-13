@@ -4,6 +4,7 @@ const { sendSuccessResponse, sendErrorResponse } = require('../utils/responseHan
 const User = require('../models/user.model');
 const Lead = require('../models/lead.model');
 const asyncHandler = require('../middlewares/asyncHandler');
+const moment = require('moment');
 const router = express.Router();
 
 router.get(
@@ -42,14 +43,23 @@ router.post(
 
     const updatedRequestBody = client?.configuration?.requestBody?.map((configQuestion) => {
       const responseObj = lead.responses.find(
-        (response) => response.questionId && response.questionId._id.toString() === configQuestion.question_id
+        (response) =>
+          response.questionId && response.questionId._id.toString() === configQuestion.question_id
       );
-      
+
+      let formattedResponse = responseObj ? responseObj.response : null;
+
+      if (configQuestion?.date_format) {
+        const date = moment(new Date(responseObj.response));
+        formattedResponse = date.isValid() ? date.format(configQuestion.date_format) : formattedResponse;
+      }
+
       return {
         ...configQuestion,
-        response: configQuestion?.default ? configQuestion?.default : (responseObj ? responseObj.response : null)
+        response: configQuestion?.default ? configQuestion.default : formattedResponse,
       };
     });
+
 
 
     return sendSuccessResponse(

@@ -15,6 +15,13 @@ const { onlyAdminStatus } = require('../utils/constant');
 
 const router = express.Router();
 
+const questionIdMap = {
+    '67211e35066e168369880d79': 'first_name',
+    '67211e35066e168369880d7a': 'last_name',
+    '67211e35066e168369880d7b': 'email',
+    '67211e35066e168369880d7c': 'number'
+};
+
 router.get('/',
     asyncHandler(async (req, res) => {
         const { page = 1, limit = 10, status, userType, campId = '', id, assigned } = req.query;
@@ -45,20 +52,15 @@ router.get('/',
             searchQuery.userId = userId;
         }
 
-        // Check for staff verifier with assigned=true and filter out leads with onlyAdminStatus
         if (userType === 'staff' && req?.user?.role.includes('verifier') && assigned === 'true') {
             searchQuery = {
                 isActive: true,
-                verifier: userId
+                verifier: userId,
+                status: { $nin: onlyAdminStatus }
             };
-
-            // Filter out statuses that are part of onlyAdminStatus
-            searchQuery.status = { $nin: onlyAdminStatus };
-
             if (status) {
                 searchQuery.status = { ...searchQuery.status, $eq: status };
             }
-
             delete searchQuery.userId;
         }
 
@@ -76,28 +78,39 @@ router.get('/',
             totalLeads,
             totalPages: Math.ceil(totalLeads / limitNum),
             currentPage: pageNum,
-            leads: leads.map(lead => ({
-                id: lead.id,
-                verifier: lead?.verifier,
-                responses: lead.responses,
-                campaign: lead.campaignId,
-                remark: lead.remark,
-                leadId: lead.leadId,
-                clientId: lead.clientId,
-                createdBy: {
-                    userId: lead.userId._id,
-                    name: lead.userId.name,
-                    email: lead.userId.email,
-                    userType: lead.userId.userType
-                },
-                status: lead.status,
-                createdAt: lead.createdAt,
-            }))
+            leads: leads.map(lead => {
+                const specificResponses = lead.responses
+                    .filter(response => questionIdMap[response.questionId.toString()])
+                    .map(response => ({
+                        question: questionIdMap[response.questionId.toString()],
+                        answer: response.response
+                    }));
+
+                return {
+                    id: lead.id,
+                    verifier: lead?.verifier,
+                    responses: specificResponses,  // Array of objects with descriptive keys
+                    campaign: lead.campaignId,
+                    remark: lead.remark,
+                    leadId: lead.leadId,
+                    clientId: lead.clientId,
+                    createdBy: {
+                        userId: lead.userId._id,
+                        name: lead.userId.name,
+                        email: lead.userId.email,
+                        userType: lead.userId.userType
+                    },
+                    status: lead.status,
+                    createdAt: lead.createdAt,
+                };
+            })
         };
 
         return sendSuccessResponse(res, response, 'Leads fetched successfully', 200);
     })
 );
+
+
 
 router.get('/:leadId',
     asyncHandler(async (req, res) => {
@@ -273,7 +286,6 @@ router.post('/',
 
             return sendSuccessResponse(res, savedLead, 'Lead created successfully', 201);
         } catch (error) {
-            console.log(error);
             res.status(400).json({ message: error.message });
         }
     })
@@ -286,15 +298,31 @@ router.put('/:leadId',
         try {
             const { leadId } = req.params;
             const { status, remark, isActive, verifier, responses } = req.body;
-            console.log('req.body', req.body);
 
             const existingLead = await Lead.findOne({ leadId, isActive: true });
             if (!existingLead) {
                 return res.status(404).json({ message: 'Lead not found' });
             }
 
+            // Validate responses array
+            let validatedResponses = [];
+            if (responses) {
+                try {
+                    validatedResponses = responses.filter(r => r.response && r.questionId);
+                } catch (validationError) {
+                    return res.status(400).json({ message: 'Invalid responses format' });
+                }
+
+                if (validatedResponses.length !== responses.length) {
+                    return res.status(400).json({ 
+                        message: 'Some responses are invalid or incomplete',
+                        invalidResponses: responses.filter(r => !r.response || !r.questionId)
+                    });
+                }
+            }
+
             const updateFields = {
-                ...(responses && { responses }),
+                ...(validatedResponses.length > 0 && { responses: validatedResponses }),
                 ...(status && { status }),
                 ...(remark && { remark }),
                 ...(verifier && { verifier }),

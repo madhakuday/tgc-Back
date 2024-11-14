@@ -109,7 +109,6 @@ router.post(
 
             return sendSuccessResponse(res, savedLead, 'Lead created successfully', 201);
         } catch (error) {
-            console.log(error);
             res.status(400).json({ message: error.message });
         }
     })

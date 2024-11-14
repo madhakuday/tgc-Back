@@ -21,7 +21,6 @@ const seedFixedQuestions = async () => {
             }
         }
     } catch (error) {
-        console.error('Error seeding fixed questions:', error);
     }
 };
 

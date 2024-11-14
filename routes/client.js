@@ -23,7 +23,7 @@ router.post(
     }
 
     try {
-      const filtered_obj =  configuration.requestBody.reduce((acc, item) => {
+      const filtered_obj = configuration.requestBody.reduce((acc, item) => {
         acc[item.field_name] = item.response || "";
         return acc;
       }, {});
@@ -53,5 +53,26 @@ router.post(
     }
   })
 );
+
+router.get('/getById/:id', async(req, res) => {
+  try {
+    const clientId = req?.params?.id
+
+    if (!clientId) {
+      sendErrorResponse(res, 'Client id not provided')
+    }
+
+    const user = await User.findById(clientId)
+
+    if (user?.userType === 'client') {
+      sendSuccessResponse(res, user, 'Client fetched successfully', 200)
+    } else {
+      sendErrorResponse(res, 'Wrong client ID')
+    }
+
+  } catch (error) {
+    sendErrorResponse(res, error?.message || 'Wrong client id')
+  }
+})
 
 module.exports = router;

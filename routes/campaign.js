@@ -101,7 +101,11 @@ router.get(
 router.get(
   '/getById',
   asyncHandler(async (req, res) => {
-    const campIds = req?.user?.campIds || [];
+    let campIds = req?.user?.campIds || [];
+
+    if (req.user.userType === 'admin') {
+      campIds =[ req?.query?.campId]
+    }
 
     const objectIds = campIds?.map(id => new mongoose.Types.ObjectId(id));
     const campaigns = await Campaign.find({ _id: { $in: objectIds } });

@@ -17,7 +17,6 @@ const validate = (validators) => {
 
       next();
     } catch (error) {
-      console.error("Validation error:", error);
       return sendErrorResponse(res, 'Internal server error during validation', 500);
     }
   };

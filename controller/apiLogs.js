@@ -19,7 +19,6 @@ const logApiCall = async (clientId, leadId, requestBody, response, responseStatu
     });
     return await apiLog.save();
   } catch (error) {
-    console.error("Error logging API call:", error);
     throw Error(error);
   }
 };

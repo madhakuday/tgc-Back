@@ -15,6 +15,21 @@ app.use(cors())
 app.use(bodyParser.json());
 // app.use(express.json()); // Replaces app.use(bodyParser.json())
 
+app.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_UNSUPPORTED_FILE_TYPE') {
+        return res.status(400).json({
+            message: `Unsupported file type for field: ${err.field}`,
+            code: err.code,
+        });
+    }
+
+    if (err) {
+        return res.status(500).json({ message: err.message });
+    }
+
+    next();
+});
+
 app.use('/api/docs', express.static('public/docs'));
 app.use('/api/media', express.static('public/media'));
 

@@ -12,6 +12,7 @@ const validate = require('../middlewares/validationMiddleware');
 const ApiLogs = require('../models/api-logs.model');
 const Question = require('../models/question.model');
 const { onlyAdminStatus } = require('../utils/constant');
+const User = require('../models/user.model'); 
 
 const router = express.Router();
 
@@ -69,7 +70,6 @@ router.get('/',
         const leads = await Lead.find(searchQuery)
             .populate('userId', 'name email userType')
             .populate('campaignId', 'title isActive userType')
-            .populate('clientId', 'name email')
             .skip(skip)
             .limit(limitNum)
             .sort({ createdAt: -1 });
@@ -89,7 +89,7 @@ router.get('/',
                 return {
                     id: lead.id,
                     verifier: lead?.verifier,
-                    responses: specificResponses,  // Array of objects with descriptive keys
+                    responses: specificResponses,
                     campaign: lead.campaignId,
                     remark: lead.remark,
                     leadId: lead.leadId,
@@ -110,7 +110,59 @@ router.get('/',
     })
 );
 
+router.get('/getAllLeads',
+    asyncHandler(async (req, res) => {
+        const userType = req.user.userType;
+        const userId = req.user.id;
+        let searchQuery = { isActive: true };
 
+        if (userType === 'admin') {
+        } else if (userType === 'vendor') {
+            searchQuery.userId = userId;
+        } else if (userType === 'staff') {
+            searchQuery.verifier = userId;
+        } else {
+            return sendErrorResponse(res, 'Unauthorized access', 403);
+        }
+
+        const leads = await Lead.find(searchQuery)
+            .populate('userId', 'name email userType')
+            .populate('campaignId', 'title isActive userType')
+            .sort({ createdAt: -1 });
+
+        const response = {
+            leads: leads.map(lead => {
+                const specificResponses = lead.responses
+                    .filter(response => questionIdMap[response.questionId.toString()])
+                    .map(response => ({
+                        question: questionIdMap[response.questionId.toString()],
+                        answer: response.response
+                    }));
+
+                return {
+                    id: lead.id,
+                    verifier: lead?.verifier,
+                    responses: specificResponses,
+                    campaign: lead.campaignId,
+                    remark: lead.remark,
+                    leadId: lead.leadId,
+                    clientId: lead.clientId,
+                    createdBy: {
+                        userId: lead.userId._id,
+                        name: lead.userId.name,
+                        email: lead.userId.email,
+                        userType: lead.userId.userType
+                    },
+                    status: lead.status,
+                    createdAt: lead.createdAt,
+                };
+            })
+        };
+
+        // Return success response
+        return sendSuccessResponse(res, response, 'Leads fetched successfully', 200);
+    })
+);
 
 router.get('/:leadId',
     asyncHandler(async (req, res) => {
@@ -138,6 +190,13 @@ router.get('/:leadId',
             return sendErrorResponse(res, 'Lead not found', 404);
         }
 
+        const lastClientId = lead?.clientId?.slice(-1)[0];
+        let lastClientData = null;
+
+        if (lastClientId) {
+            lastClientData = await User.findById(lastClientId).select('name email');
+        }
+
         const response = {
             id: lead.leadId,
             remark: lead.remark,
@@ -157,7 +216,14 @@ router.get('/:leadId',
             },
             status: lead.status,
             createdAt: lead.createdAt,
-            apiLogs: apiLogs
+            apiLogs: apiLogs,
+            timeZone: lead.timeZone,
+            leadOutTime: lead.leadOutTime || '',
+            lastClient: lastClientData ? {
+                clientId: lastClientId,
+                name: lastClientData.name,
+                email: lastClientData.email
+            } : null
         };
 
         return sendSuccessResponse(res, response, 'Lead fetched successfully', 200);
@@ -216,7 +282,7 @@ router.post('/',
     validate(createLeadValidation),
     asyncHandler(async (req, res) => {
         try {
-            const { responses, campaignId } = req.body;
+            const { responses, campaignId, timeZone } = req.body;
             const userId = req.user.id;
 
             const [emailQuestion, phoneQuestion] = await Promise.all([
@@ -279,6 +345,7 @@ router.post('/',
                 responses,
                 campaignId,
                 media,
+                timeZone,
             };
 
             const lead = new Lead(leadData);
@@ -304,7 +371,6 @@ router.put('/:leadId',
                 return res.status(404).json({ message: 'Lead not found' });
             }
 
-            // Validate responses array
             let validatedResponses = [];
             if (responses) {
                 try {
@@ -314,7 +380,7 @@ router.put('/:leadId',
                 }
 
                 if (validatedResponses.length !== responses.length) {
-                    return res.status(400).json({ 
+                    return res.status(400).json({
                         message: 'Some responses are invalid or incomplete',
                         invalidResponses: responses.filter(r => !r.response || !r.questionId)
                     });
@@ -327,6 +393,7 @@ router.put('/:leadId',
                 ...(remark && { remark }),
                 ...(verifier && { verifier }),
                 ...(isActive !== undefined && { isActive }),
+                ...(status === 'submitted_to_attorney' && { leadOutTime: new Date() })
             };
 
             const updatedLead = await Lead.findOneAndUpdate(
@@ -359,6 +426,7 @@ router.put('/:leadId',
         }
     })
 );
+
 
 router.delete('/:id',
     asyncHandler(async (req, res) => {

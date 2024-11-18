@@ -39,7 +39,16 @@ router.post(
 
       if (result) {
         const existingLead = await Lead.findOne({ leadId, isActive: true });
-        await Lead.findByIdAndUpdate(existingLead?.id, { clientId }, { new: true });
+
+        if (!existingLead) {
+          return sendErrorResponse(res, 'Lead not found', 404);
+        }
+
+        const updatedClientIds = existingLead.clientId || [];
+        if (!updatedClientIds.includes(clientId)) {
+          updatedClientIds.push(clientId);
+        }
+        await Lead.findByIdAndUpdate(existingLead?.id, { clientId: updatedClientIds }, { new: true });
         return sendSuccessResponse(res, response.data, 'Request sent successfully', response.status);
       } else {
         throw new Error()

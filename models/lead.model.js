@@ -17,8 +17,14 @@ const leadSchema = new mongoose.Schema({
         required: true
     },
     clientId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        type: [String],
+        default: [],
+        validate: {
+            validator: function (value) {
+                return Array.isArray(value) && value.every((item) => typeof item === 'string');
+            },
+            message: 'clientId must be an array of strings.',
+        },
     },
     responses: [
         {
@@ -33,18 +39,18 @@ const leadSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: [
-            'new', 
-            'under_verification', 
-            'submitted_to_attorney', 
-            'approve', 
-            'reject', 
-            'return', 
-            'replace', 
-            'verified', 
-            'answering_machine', 
-            'callback', 
-            'vm', 
-            'billable', 
+            'new',
+            'under_verification',
+            'submitted_to_attorney',
+            'approve',
+            'reject',
+            'return',
+            'replace',
+            'verified',
+            'answering_machine',
+            'callback',
+            'vm',
+            'billable',
             'paid'
         ],
         required: true,
@@ -64,10 +70,17 @@ const leadSchema = new mongoose.Schema({
             url: { type: String, required: true }
         }
     ],
-    generated_by_api:{
+    generated_by_api: {
         type: Boolean,
         default: false
-    }
+    },
+    timeZone: {
+        type: String,
+        required: true,
+    },
+    leadOutTime: {
+        type: Date,
+    },
 }, { timestamps: true });
 
 const Lead = mongoose.model('Lead', leadSchema);

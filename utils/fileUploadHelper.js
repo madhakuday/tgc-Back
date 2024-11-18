@@ -12,7 +12,7 @@ const storage = multer.diskStorage({
         } else if (file.mimetype.includes('audio') || file.mimetype.includes('video') || file.originalname.includes('recording')) {
             folder = 'public/media';
         } else {
-            return cb(new Error('Unsupported file type. Only documents, audio, and video files are allowed.'));
+            return cb(new MulterError('LIMIT_UNSUPPORTED_FILE_TYPE', file.fieldname));
         }
 
         if (!fs.existsSync(folder)) {

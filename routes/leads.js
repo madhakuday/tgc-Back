@@ -478,7 +478,8 @@ router.delete('/:id',
         const { id } = req.params;
         const userType = req.user.userType
 
-        if (userType !== 'admin' || userType !== 'subAdmin') {
+        const allowdUser = ['admin', 'subAdmin']
+        if (!allowdUser.includes(userType)) {
             return sendErrorResponse(res, `${userType} is not authorized to access this service....`, 400);
         }
         if (!isValidObjectId(id)) {
@@ -490,6 +491,7 @@ router.delete('/:id',
         if (!lead) {
             return sendErrorResponse(res, 'Lead not found', 404);
         }
+
 
         return sendSuccessResponse(res, lead, 'Lead deleted successfully', 200);
     })

@@ -13,13 +13,13 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: function() {
+    required: function () {
       return this.userType !== 'client';
     },
   },
   userType: {
     type: String,
-    enum: ['admin', 'client', 'vendor', 'staff'],
+    enum: ['admin', 'client', 'vendor', 'staff', 'subAdmin'],
     required: true,
   },
   isActive: {
@@ -27,6 +27,14 @@ const userSchema = new mongoose.Schema({
     default: true,
   },
   campIds: {
+    type: [String],
+    default: [],
+  },
+  AssignedClientsIds: {
+    type: [String],
+    default: [],
+  },
+  AssignedVendorIds: {
     type: [String],
     default: [],
   },
@@ -46,7 +54,30 @@ const userSchema = new mongoose.Schema({
   vendor_api_token: {
     type: String,
   },
-}, { timestamps: true });
+},
+  { timestamps: true }
+);
+
+userSchema.index(
+  { email: 1 },
+  { unique: true, collation: { locale: 'en', strength: 2 } }
+);
+
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('email')) return next();
+
+  this.email = this.email.toLowerCase();
+
+  const existingUser = await mongoose.models.User.findOne({
+    email: this.email,
+  }).collation({ locale: 'en', strength: 2 });
+
+  if (existingUser && existingUser._id.toString() !== this._id.toString()) {
+    return next(new Error('Email already exists'));
+  }
+
+  next();
+});
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
@@ -56,6 +87,7 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
+// Remove configuration for non-client users
 userSchema.pre('save', function (next) {
   if (this.userType !== 'client') {
     this.configuration = undefined;

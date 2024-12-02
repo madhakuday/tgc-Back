@@ -11,21 +11,14 @@ const { createLeadValidation, parseResponses } = require('../validators/leads')
 const validate = require('../middlewares/validationMiddleware');
 const ApiLogs = require('../models/api-logs.model');
 const Question = require('../models/question.model');
-const { onlyAdminStatus } = require('../utils/constant');
-const User = require('../models/user.model'); 
+const { onlyAdminStatus, questionIdMap } = require('../utils/constant');
+const User = require('../models/user.model');
 
 const router = express.Router();
 
-const questionIdMap = {
-    '67211e35066e168369880d79': 'first_name',
-    '67211e35066e168369880d7a': 'last_name',
-    '67211e35066e168369880d7b': 'email',
-    '67211e35066e168369880d7c': 'number'
-};
-
 router.get('/',
     asyncHandler(async (req, res) => {
-        const { page = 1, limit = 10, status, userType, campId = '', id, assigned, role } = req.query;
+        const { page = 1, limit = 10, status, userType, campId = '', id = '', assigned, role } = req.query;
         const limitNum = parseInt(limit, 10);
         const pageNum = Math.max(1, parseInt(page, 10));
         const skip = (pageNum - 1) * limitNum;
@@ -46,7 +39,7 @@ router.get('/',
             searchQuery.campaignId = campId;
         }
 
-        if (role) {
+        if (role && !id) {
             const usersWithRole = await User.find({ userType: role }).select('_id');
             const userIds = usersWithRole.map(user => user._id);
             searchQuery.userId = { $in: userIds };
@@ -127,6 +120,16 @@ router.get('/getAllLeads',
             searchQuery.userId = userId;
         } else if (userType === 'staff') {
             searchQuery.verifier = userId;
+        } else if (userType === 'subAdmin') {
+            const subAdmin = await User.findById(userId).select('AssignedVendorIds');
+            if (!subAdmin) {
+                return sendErrorResponse(res, 'Unauthorized access', 403);
+            }
+            if (subAdmin.AssignedVendorIds.length > 0) {
+                searchQuery.userId = { $in: subAdmin.AssignedVendorIds };
+            } else {
+                return sendErrorResponse(res, 'No assigned vendors found', 403);
+            }
         } else {
             return sendErrorResponse(res, 'Unauthorized access', 403);
         }
@@ -183,18 +186,25 @@ router.get('/:leadId',
             return sendErrorResponse(res, `${userType} is not authorized to access this service....`, 400);
         }
 
-        const lead = await Lead.findOne(searchQuery).populate('userId', 'name email configuration userType').populate({
-            path: 'responses.questionId',
-            model: 'Question',
-            select: 'title type'
-        });
-
-        const apiLogs = await ApiLogs.find({ leadId: leadId })
-            .select('requestBody response responseStatusCode createdAt updatedAt');
+        const lead = await Lead.findOne(searchQuery)
+            .populate('userId', 'name email configuration userType')
+            .populate({
+                path: 'responses.questionId',
+                model: 'Question',
+                select: 'title type'
+            });
 
         if (!lead) {
             return sendErrorResponse(res, 'Lead not found', 404);
         }
+
+        const apiLogs = await ApiLogs.find({ leadId: leadId })
+            .select('requestBody response responseStatusCode createdAt updatedAt');
+
+        const leadHistory = await LeadHistory.find({ leadId: leadId })
+            .populate('updatedBy', 'name email userType')
+            .populate('sentTo', 'name email')
+            .select('previousStatus currentStatus updatedBy updateType note createdAt sentTo changedBySupAdmin');
 
         const lastClientId = lead?.clientId?.slice(-1)[0];
         let lastClientData = null;
@@ -229,7 +239,26 @@ router.get('/:leadId',
                 clientId: lastClientId,
                 name: lastClientData.name,
                 email: lastClientData.email
-            } : null
+            } : null,
+            leadHistory: leadHistory.map(history => ({
+                previousStatus: history.previousStatus,
+                currentStatus: history.currentStatus,
+                updatedBy: history.updatedBy ? {
+                    userId: history.updatedBy._id,
+                    name: history.updatedBy.name,
+                    email: history.updatedBy.email,
+                    userType: history.updatedBy.userType
+                } : null,
+                updateType: history.updateType,
+                note: history.note,
+                createdAt: history.createdAt,
+                sentTo: history.sentTo ? {
+                    userId: history.sentTo._id,
+                    name: history.sentTo.name,
+                    email: history.sentTo.email
+                } : null,
+                changedBySupAdmin: history.changedBySupAdmin
+            }))
         };
 
         return sendSuccessResponse(res, response, 'Lead fetched successfully', 200);
@@ -379,7 +408,7 @@ router.put('/:leadId',
     asyncHandler(async (req, res) => {
         try {
             const { leadId } = req.params;
-            const { status, remark, isActive, verifier, responses } = req.body;
+            const { status, remark, isActive, verifier, responses, clientId } = req.body;
 
             const existingLead = await Lead.findOne({ leadId, isActive: true });
             if (!existingLead) {
@@ -431,6 +460,8 @@ router.put('/:leadId',
                     : 'Data updated',
                 previousStatus: existingLead.status,
                 currentStatus: status || existingLead.status,
+                ...(status === 'submitted_to_attorney' && { sentTo: clientId }),
+                changedBySupAdmin: req.user.userType === 'subAdmin'
             };
 
             await LeadHistory.create(historyData);
@@ -445,7 +476,11 @@ router.put('/:leadId',
 router.delete('/:id',
     asyncHandler(async (req, res) => {
         const { id } = req.params;
+        const userType = req.user.userType
 
+        if (userType !== 'admin' || userType !== 'subAdmin') {
+            return sendErrorResponse(res, `${userType} is not authorized to access this service....`, 400);
+        }
         if (!isValidObjectId(id)) {
             return sendErrorResponse(res, 'Invalid ID format', 400);
         }

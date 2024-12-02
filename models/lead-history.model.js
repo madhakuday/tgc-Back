@@ -8,7 +8,9 @@ const LeadHistorySchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
     updateType: { type: String, enum: ['statusChange', 'dataUpdate'], required: true },
-    note: { type: String }
+    note: { type: String },
+    sentTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    changedBySupAdmin: {type: Boolean}
 });
 
 const LeadHistory = mongoose.model('LeadHistory', LeadHistorySchema);

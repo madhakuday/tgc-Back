@@ -126,11 +126,16 @@ const getUserData = async (req) => {
             rejected: "Rejected Leads",
             paid: "Paid Leads",
             billable: "Billable Leads",
+            under_verification: "Under Verification Leads",
+            callback: "Callback Leads",
+            verified: "Verified Leads",
+            vm: "Vm Leads",
+            submitted_to_attorney: "Submitted To Attorney"
         };
 
         const statusMapping = {
             new: ["new"],
-            pending: ["under_verification", "submitted_to_attorney"], // Handled separately
+            pending: ["under_verification", "submitted_to_attorney"],
             approved: ["approve", "verified"],
             rejected: ["reject"],
             paid: ["paid"],
@@ -138,17 +143,14 @@ const getUserData = async (req) => {
         };
 
         let allowedCategories = [];
-        if (userType === 'admin') {
+        if (userType === 'admin' || userType === 'subAdmin' || userType == 'vendor') {
             allowedCategories = Object.keys(statusMapping);
         } else if (userType === 'staff') {
-            allowedCategories = ["pending", "approved", 'new']; // Restrict to allowed categories for staff
-        } else if (userType === 'vendor') {
-            allowedCategories = ["new", "pending", "approved"]; // Restrict for vendor
+            allowedCategories = ["approved", 'new', 'callback', "verified", 'vm', "submitted_to_attorney"];
         } else {
-            return { isDataExist: false, result: [] }; // No access for other user types
+            return { isDataExist: false, result: [] };
         }
 
-        // Build match conditions
         const matchConditions = await buildMatchConditions(
             userType,
             currentUserId,
@@ -158,7 +160,6 @@ const getUserData = async (req) => {
             { isActive: true }
         );
 
-        // Aggregate data and group by categories
         const statusCounts = await Lead.aggregate([
             { $match: matchConditions },
             // Lookup userType from User collection
@@ -170,9 +171,7 @@ const getUserData = async (req) => {
                     as: "userDetails",
                 },
             },
-            // Unwind userDetails to access userType
             { $unwind: "$userDetails" },
-            // Group data by categories
             {
                 $group: {
                     _id: {
@@ -183,7 +182,7 @@ const getUserData = async (req) => {
                                     case: {
                                         $and: [
                                             { $in: ["$status", ["under_verification", "submitted_to_attorney"]] },
-                                            { $eq: ["$userDetails.userType", "staff"] }, // Ensure created by staff
+                                            { $eq: ["$userDetails.userType", "staff"] },
                                         ],
                                     },
                                     then: "pending",
@@ -225,7 +224,6 @@ const getUserData = async (req) => {
     }
 };
 
-
 const getBarChartData = async (req) => {
     try {
         const { timeline, startDate, endDate, id = "", role = "" } = req.query;
@@ -233,7 +231,7 @@ const getBarChartData = async (req) => {
         const currentUserId = req.user.id;
 
         const dateRange = buildDateRange(timeline, startDate, endDate);
-        const matchConditions = await buildMatchConditions(userType, currentUserId, id, role, dateRange);
+        const matchConditions = await buildMatchConditions(userType, currentUserId, id, role, dateRange, { isActive: true });
 
         let groupField, labelsFormatter;
 
@@ -294,10 +292,7 @@ const getPieChartData = async (req) => {
 
         const dateRange = buildDateRange(timeline, startDate, endDate);
         const allowedStatuses = userType === 'staff'
-            ? ['answering_machine', 'callback', 'verified', 'vm', 'new']
-            : userType === 'vendor'
-                ? ['verified', 'new', 'under_verification', 'submitted_to_attorney']
-                : Object.keys(statusMap);
+            ? ['answering_machine', 'callback', 'verified', 'vm', 'new'] : Object.keys(statusMap);
 
         const matchConditions = await buildMatchConditions(userType, currentUserId, id, role, dateRange, { status: { $in: allowedStatuses }, isActive: true });
 

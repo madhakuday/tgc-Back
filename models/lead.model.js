@@ -76,7 +76,7 @@ const leadSchema = new mongoose.Schema({
     },
     timeZone: {
         type: String,
-        required: true,
+        default: ""
     },
     leadOutTime: {
         type: Date,

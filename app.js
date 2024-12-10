@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const routes = require('./routes');
 const cors = require('cors');
 const errorHandler = require('./middlewares/errorHandler');
+const multer = require('multer');
 const app = express();
 
 // DB

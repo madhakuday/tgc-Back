@@ -120,16 +120,16 @@ const getUserData = async (req) => {
 
         // Define status categories
         const statusCategories = {
-            new: "New Leads",
-            pending: "Pending Leads",
-            approved: "Approved Leads",
-            rejected: "Rejected Leads",
-            paid: "Paid Leads",
-            billable: "Billable Leads",
-            under_verification: "Under Verification Leads",
-            callback: "Callback Leads",
-            verified: "Verified Leads",
-            vm: "Vm Leads",
+            new: "New",
+            pending: "Pending",
+            approved: "Approved",
+            rejected: "Rejected",
+            paid: "Paid",
+            billable: "Billable",
+            under_verification: "Under Verification",
+            callback: "Callback",
+            verified: "Verified",
+            vm: "Vm",
             submitted_to_attorney: "Submitted To Attorney"
         };
 
@@ -162,7 +162,6 @@ const getUserData = async (req) => {
 
         const statusCounts = await Lead.aggregate([
             { $match: matchConditions },
-            // Lookup userType from User collection
             {
                 $lookup: {
                     from: "users",
@@ -198,7 +197,7 @@ const getUserData = async (req) => {
                     count: { $sum: 1 },
                 },
             },
-            { $match: { _id: { $in: allowedCategories } } }, // Filter out irrelevant categories
+            { $match: { _id: { $in: allowedCategories } } },
             { $sort: { _id: 1 } },
         ]);
 
@@ -292,7 +291,8 @@ const getPieChartData = async (req) => {
 
         const dateRange = buildDateRange(timeline, startDate, endDate);
         const allowedStatuses = userType === 'staff'
-            ? ['answering_machine', 'callback', 'verified', 'vm', 'new'] : Object.keys(statusMap);
+            ? ['answering_machine', 'callback', 'verified', 'vm', 'new']
+            : Object.keys(statusMap);
 
         const matchConditions = await buildMatchConditions(userType, currentUserId, id, role, dateRange, { status: { $in: allowedStatuses }, isActive: true });
 
@@ -307,21 +307,23 @@ const getPieChartData = async (req) => {
             { $sort: { _id: 1 } }
         ]);
 
-        const labels = statusCounts.map(data => statusMap[data._id] || data._id);
-        const data = statusCounts.map(data => data.count);
-        const backgroundColor = statusCounts.map(data => statusColors[data._id] || "#CCCCCC");
+        const baseCutout = 50;
+        
+        const datasets = statusCounts.map((data, index) => {
+            return {
+                label: statusMap[data._id] || data._id,
+                data: [data.count],
+                backgroundColor: [statusColors[data._id] || "#CCCCCC"],
+                hoverBackgroundColor: [statusColors[data._id] || "#CCCCCC"],
+                borderWidth: 2,
+                cutout: `${baseCutout + index * 1}%`
+            }
+        });
 
         return {
-            isDataExist: data.length,
-            labels,
-            datasets: [
-                {
-                    label: 'Status',
-                    data,
-                    backgroundColor,
-                    hoverBackgroundColor: backgroundColor,
-                },
-            ],
+            isDataExist: statusCounts.length > 0,
+            labels: statusCounts.map(data => statusMap[data._id] || data._id),
+            datasets: datasets,
         };
     } catch (error) {
         console.error(error);

@@ -13,6 +13,8 @@ const ApiLogs = require('../models/api-logs.model');
 const Question = require('../models/question.model');
 const { onlyAdminStatus, questionIdMap } = require('../utils/constant');
 const User = require('../models/user.model');
+const { checkRepresentation } = require('../controller/leads');
+const { validateLeadData } = require('../utils/leadValidator');
 
 const router = express.Router();
 
@@ -320,35 +322,13 @@ router.post('/',
             const { responses, campaignId, timeZone } = req.body;
             const userId = req.user.id;
 
-            const [emailQuestion, phoneQuestion, representedByFirmQuestion] = await Promise.all([
-                Question.findOne({ fixedId: 'email' }),
-                Question.findOne({ fixedId: 'contact_number' }),
-                Question.findOne({ fixedId: 'represented_by_firm_attorney' })
-            ]);
+            // Validate lead data
+            const { noIssues } = await validateLeadData(responses);
 
-            const emailQuestionId = emailQuestion ? emailQuestion._id.toString() : null;
-            const phoneQuestionId = phoneQuestion ? phoneQuestion._id.toString() : null;
-            const representedByFirmQuestionId = representedByFirmQuestion ? representedByFirmQuestion._id.toString() : null;
-
-            const emailResponse = responses.find(response => response.questionId === emailQuestionId);
-            const phoneResponse = responses.find(response => response.questionId === phoneQuestionId);
-            const representedByFirmResponse = responses.find(response => response.questionId === representedByFirmQuestionId);
-
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (emailResponse && !emailRegex.test(emailResponse.response)) {
-                return sendErrorResponse(res, 'Invalid email format', 400);
+            if (noIssues) {
+                return sendSuccessResponse(res, {}, 'Thank you for your response. No issues detected.', 201);
             }
-
-            const existingLead = await Lead.findOne({
-                $or: [
-                    { 'responses.response': emailResponse?.response, 'responses.questionId': emailQuestionId },
-                    { 'responses.response': phoneResponse?.response, 'responses.questionId': phoneQuestionId }
-                ]
-            });
-
-            if (existingLead) {
-                return sendErrorResponse(res, 'A lead with the same email or phone number already exists.', 400);
-            }
+            
             let lastLeadNumber = 0;
             let newLeadNumber;
             let leadId;
@@ -371,10 +351,6 @@ router.post('/',
                 }
             } while (true);
 
-            let status = 'new'
-            if (representedByFirmResponse && representedByFirmResponse.response.toLowerCase() === 'yes') {
-                status = 'reject';
-            }
 
             // Prepare media files
             const media = req.files.media ? req.files.media.map(file => ({
@@ -388,8 +364,7 @@ router.post('/',
                 responses,
                 campaignId,
                 media,
-                timeZone,
-                status
+                timeZone
             };
 
             const lead = new Lead(leadData);

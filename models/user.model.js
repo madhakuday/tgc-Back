@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true,
+    unique: false, // Ensure no duplication here
   },
   password: {
     type: String,
@@ -58,6 +58,7 @@ const userSchema = new mongoose.Schema({
   { timestamps: true }
 );
 
+// Explicit index with collation
 userSchema.index(
   { email: 1 },
   { unique: true, collation: { locale: 'en', strength: 2 } }

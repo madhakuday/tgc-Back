@@ -45,8 +45,8 @@ router.post(
       const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
 
       // for add token vendor
-      // const vendor_token = jwt.sign({ campId: campIds[0], userId: user._id || user?.id }, process.env.JWT_SECRET_KEY, {});
-      // await User.findByIdAndUpdate(user?.id || user?._id, { vendor_api_token: vendor_token }, {new: true})
+      const vendor_token = jwt.sign({ campId: campIds[0], userId: user._id || user?.id }, process.env.JWT_SECRET_KEY, {});
+      await User.findByIdAndUpdate(user?.id || user?._id, { vendor_api_token: vendor_token }, {new: true})
 
       return sendSuccessResponse(res, { token, user }, 'User registered successfully', 201);
     } catch (error) {

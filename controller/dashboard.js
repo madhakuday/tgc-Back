@@ -306,24 +306,24 @@ const getPieChartData = async (req) => {
             },
             { $sort: { _id: 1 } }
         ]);
-
-        const baseCutout = 50;
-        
-        const datasets = statusCounts.map((data, index) => {
-            return {
-                label: statusMap[data._id] || data._id,
-                data: [data.count],
-                backgroundColor: [statusColors[data._id] || "#CCCCCC"],
-                hoverBackgroundColor: [statusColors[data._id] || "#CCCCCC"],
-                borderWidth: 2,
-                cutout: `${baseCutout + index * 1}%`
-            }
-        });
+        const labels = statusCounts.map(data => statusMap[data._id] || data._id);
+        const data = statusCounts.map(data => data.count);
+        const backgroundColor = statusCounts.map(data => statusColors[data._id] || "#CCCCCC");
 
         return {
-            isDataExist: statusCounts.length > 0,
-            labels: statusCounts.map(data => statusMap[data._id] || data._id),
-            datasets: datasets,
+            isDataExist: data.length,
+            labels,
+            datasets: [
+                {
+                    label: 'Status',
+                    data,
+                    backgroundColor,
+                    hoverBackgroundColor: backgroundColor,
+                    datalabels: {
+                        color: 'white'
+                    }
+                },
+            ],
         };
     } catch (error) {
         console.error(error);

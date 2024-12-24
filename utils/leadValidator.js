@@ -22,6 +22,9 @@ const validateLeadData = async (responses) => {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    console.log('emailQuestion', emailQuestion);
+    console.log('emailResponse', emailResponse);
+    console.log('emailResponse.resp:', emailResponse?.response);
     if (emailResponse && !emailRegex.test(emailResponse.response)) {
         throw new Error('Invalid email format');
     }

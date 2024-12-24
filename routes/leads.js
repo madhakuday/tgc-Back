@@ -222,15 +222,15 @@ router.get('/:leadId',
             leadId: lead.leadId,
             responses: lead?.responses?.map(resp => ({
                 questionId: resp?.questionId?._id,
-                questionTitle: resp.questionId.title,
-                questionType: resp.questionId.type,
-                response: resp.response
+                questionTitle: resp.questionId?.title,
+                questionType: resp.questionId?.type,
+                response: resp?.response
             })),
             createdBy: {
                 userId: lead?.userId?._id,
-                name: lead.userId.name,
-                email: lead.userId.email,
-                userType: lead.userId.userType
+                name: lead?.userId?.name,
+                email: lead?.userId?.email,
+                userType: lead?.userId?.userType
             },
             status: lead.status,
             createdAt: lead.createdAt,

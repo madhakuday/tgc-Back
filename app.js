@@ -14,6 +14,8 @@ require('./db')
 // cors
 app.use(cors())
 app.use(bodyParser.json());
+app.use(express.text());
+app.use(express.urlencoded({ extended: true }));
 // app.use(express.json()); // Replaces app.use(bodyParser.json())
 
 app.use((err, req, res, next) => {

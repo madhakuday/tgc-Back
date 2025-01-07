@@ -12,9 +12,9 @@ const validateLeadData = async (responses) => {
     const phoneQuestionId = phoneQuestion ? phoneQuestion._id.toString() : null;
     const representedByFirmQuestionId = representedByFirmQuestion ? representedByFirmQuestion._id.toString() : null;
 
-    const emailResponse = responses.find(response => response.questionId === emailQuestionId);
-    const phoneResponse = responses.find(response => response.questionId === phoneQuestionId);
-    const representedByFirmResponse = responses.find(response => response.questionId === representedByFirmQuestionId);
+    const emailResponse = responses?.find(response => response.questionId === emailQuestionId);
+    const phoneResponse = responses?.find(response => response.questionId === phoneQuestionId);
+    const representedByFirmResponse = responses?.find(response => response.questionId === representedByFirmQuestionId);
 
     if (representedByFirmResponse && representedByFirmResponse.response.toLowerCase() === 'yes') {
         return { noIssues: true };

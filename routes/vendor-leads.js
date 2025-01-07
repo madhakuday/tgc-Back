@@ -71,6 +71,7 @@ const vendorAuthMiddleware = async (req, res, next) => {
 //     { key: "use_product", q_id: "673299e17309a506a7db0fd9" }, // 17 -
 //     { key: "diagnosed", q_id: "6729aeab127c4b270ff86112" }, // 18 -
 // ];
+// LIVE CHANGE
 
 // // LIVE
 const defaultData = [
@@ -99,6 +100,8 @@ router.post(
     '/lead-by-api',
     vendorAuthMiddleware,
     asyncHandler(async (req, res) => {
+        console.log('123', req.body);
+
         const historyEntry = {
             userId: req.userId,
             campaignId: req.campId,
@@ -112,10 +115,32 @@ router.post(
             origin: req.headers.origin,
         };
 
+        if (typeof req.body !== 'object' || Array.isArray(req.body) || req.body === null) {
+            historyEntry.responseStatus = 400;
+            historyEntry.error = {
+                success: false,
+                message: 'Invalid request body. Expected a JSON object.',
+                errors: [],
+            };
+            await new VendorApiLeadHistory(historyEntry).save();
+            return sendErrorResponse(res, 'Invalid request body. Expected a JSON object.', 400);
+        }
+
         try {
             const userId = req.userId;
             const campId = req.campId;
-            const requestData = req.body.data;
+            const requestData = req?.body?.data;
+
+            if (!req?.body?.data) {
+                historyEntry.responseStatus = 404;
+                historyEntry.error = {
+                    success: false,
+                    message: 'Please provide data',
+                    errors: [],
+                };
+                await new VendorApiLeadHistory(historyEntry).save();
+                return sendErrorResponse(res, 'Please provide data', 404);
+            }
 
             if (!campId) {
                 historyEntry.responseStatus = 404;
@@ -128,9 +153,9 @@ router.post(
                 return sendErrorResponse(res, 'Camp id not provided', 404);
             }
 
-            const dataMap = Object.fromEntries(defaultData.map(item => [item.key, item.q_id]));
+            const dataMap = Object.fromEntries(defaultData?.map(item => [item.key, item.q_id]));
 
-            const transformedResponses = requestData.map(item => {
+            const transformedResponses = requestData?.map(item => {
                 const questionId = dataMap[item.key];
                 return questionId ? { questionId, response: item.value } : null;
             }).filter(response => response !== null);
@@ -172,6 +197,8 @@ router.post(
             await new VendorApiLeadHistory(historyEntry).save();
             return sendSuccessResponse(res, savedLead, 'Lead created successfully', 201);
         } catch (error) {
+            console.log('error123', error);
+
             historyEntry.responseStatus = 400;
             historyEntry.error = JSON.stringify({
                 success: false,

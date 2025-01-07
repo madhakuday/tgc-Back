@@ -19,7 +19,7 @@ const router = express.Router();
 
 router.get('/',
     asyncHandler(async (req, res) => {
-        const { page = 1, limit = 10, status, userType, campId = '', id = '', assigned, role, timeframe = '', startDate, endDate } = req.query;
+        const { page = 1, limit = 10, status, userType, campId = '', id = '', assigned, role, timeframe = '', startDate = '', endDate = '' } = req.query;
         const limitNum = parseInt(limit, 10);
         const pageNum = Math.max(1, parseInt(page, 10));
         const skip = (pageNum - 1) * limitNum;

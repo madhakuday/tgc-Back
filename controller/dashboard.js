@@ -98,15 +98,17 @@ const statusColors = {
     callback: "#36A2EB",
     verified: "#FFCE56",
     vm: "#66BB6A",
-    new: "#FFA726",
+    new: "#FFDE00",
     under_verification: "#AB47BC",
     submitted_to_attorney: "#29B6F6",
-    approve: "#EF5350",
-    reject: "#FF7043",
+    approve: "#008000",
+    approved: "#008000",
+    reject: "#DC3545",
+    rejected: "#DC3545",
     return: "#26A69A",
     replace: "#9CCC65",
-    billable: "#5C6BC0",
-    paid: "#42A5F5",
+    billable: "#0000FF",
+    paid: "#50C878",
 };
 
 const getUserData = async (req) => {
@@ -204,6 +206,7 @@ const getUserData = async (req) => {
         const result = allowedCategories.map(category => ({
             title: statusCategories[category],
             value: 0,
+            color: statusColors[category]
         }));
 
         statusCounts.forEach(data => {
@@ -335,4 +338,5 @@ module.exports = {
     getUserData,
     getBarChartData,
     getPieChartData,
+    buildDateRange
 }

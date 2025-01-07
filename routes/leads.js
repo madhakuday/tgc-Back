@@ -10,17 +10,16 @@ const { upload, generateFileUrl } = require('../utils/fileUploadHelper');
 const { createLeadValidation, parseResponses } = require('../validators/leads')
 const validate = require('../middlewares/validationMiddleware');
 const ApiLogs = require('../models/api-logs.model');
-const Question = require('../models/question.model');
 const { onlyAdminStatus, questionIdMap } = require('../utils/constant');
 const User = require('../models/user.model');
-const { checkRepresentation } = require('../controller/leads');
 const { validateLeadData } = require('../utils/leadValidator');
+const { buildDateRange } = require('../controller/dashboard');
 
 const router = express.Router();
 
 router.get('/',
     asyncHandler(async (req, res) => {
-        const { page = 1, limit = 10, status, userType, campId = '', id = '', assigned, role } = req.query;
+        const { page = 1, limit = 10, status, userType, campId = '', id = '', assigned, role, timeframe = '', startDate, endDate } = req.query;
         const limitNum = parseInt(limit, 10);
         const pageNum = Math.max(1, parseInt(page, 10));
         const skip = (pageNum - 1) * limitNum;
@@ -45,6 +44,11 @@ router.get('/',
             const usersWithRole = await User.find({ userType: role }).select('_id');
             const userIds = usersWithRole.map(user => user._id);
             searchQuery.userId = { $in: userIds };
+        }
+
+        if (timeframe) {
+            const dateRange = buildDateRange(timeframe, startDate, endDate);
+            // searchQuery.dateRange = dateRange
         }
 
         if (userType === 'vendor' || userType === 'staff') {
@@ -96,10 +100,10 @@ router.get('/',
                     leadId: lead.leadId,
                     clientId: lead.clientId,
                     createdBy: {
-                        userId: lead.userId._id,
-                        name: lead.userId.name,
-                        email: lead.userId.email,
-                        userType: lead.userId.userType
+                        userId: lead?.userId?._id,
+                        name: lead?.userId?.name,
+                        email: lead?.userId?.email,
+                        userType: lead?.userId?.userType
                     },
                     status: lead.status,
                     createdAt: lead.createdAt,
@@ -328,7 +332,7 @@ router.post('/',
             if (noIssues) {
                 return sendSuccessResponse(res, {}, 'Thank you for your response. No issues detected.', 201);
             }
-            
+
             let lastLeadNumber = 0;
             let newLeadNumber;
             let leadId;

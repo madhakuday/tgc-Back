@@ -1,4 +1,3 @@
-const { sendErrorResponse, sendSuccessResponse } = require('../utils/responseHandler');
 const Lead = require('../models/lead.model');
 const Question = require('../models/question.model');
 
@@ -22,9 +21,6 @@ const validateLeadData = async (responses) => {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    console.log('emailQuestion', emailQuestion);
-    console.log('emailResponse', emailResponse);
-    console.log('emailResponse.resp:', emailResponse?.response);
     if (emailResponse && !emailRegex.test(emailResponse.response)) {
         throw new Error('Invalid email format');
     }

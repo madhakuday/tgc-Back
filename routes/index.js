@@ -7,6 +7,7 @@ const userRoutes = require('./user');
 const clientRoutes = require('./client');
 const dashboardRoutes = require('./dashboard');
 const vendorLeadsRoutes = require('./vendor-leads');
+const apiHistoryRoutes = require('./api-history');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.use('/campaign', authMiddleware, campaignRoutes);
 router.use('/user', authMiddleware, userRoutes);
 router.use('/client', authMiddleware, clientRoutes);
 router.use('/dashboard', authMiddleware, dashboardRoutes);
+router.use('/api-history', authMiddleware, apiHistoryRoutes);
 
 router.use('/vendor', vendorLeadsRoutes);
 

@@ -7,6 +7,28 @@ const Lead = require('../models/lead.model');
 const asyncHandler = require('../middlewares/asyncHandler');
 const router = express.Router();
 
+const getApiData = (data, headers) => {
+  const contentType = headers['Content-Type'] || headers['content-type'] || 'application/json'
+  let body = {};
+  const filteredHeaders = { ...headers };
+
+  switch (contentType) {
+    case 'application/json':
+      body = data
+      break;
+    case 'application/x-www-form-urlencoded;charset=UTF-8':
+      body = new URLSearchParams(data).toString();
+      break;
+    case 'application/x-www-form-urlencoded':
+      body = new URLSearchParams(data).toString();
+      break;
+    default:
+      throw new Error(`Unsupported Content-Type: ${contentType}`);
+  }
+
+  return { body, filtered_headers: filteredHeaders }
+}
+
 router.post(
   '/sendToClient',
   asyncHandler(async (req, res) => {
@@ -28,11 +50,13 @@ router.post(
         return acc;
       }, {});
 
+      const { body, filtered_headers } = getApiData(filtered_obj, headers)
+
       const response = await axios({
         url: path,
         method: method.toLowerCase(),
-        headers: headers || {},
-        data: filtered_obj
+        headers: filtered_headers,
+        data: body
       });
 
       const result = await logApiCall(clientId, leadId, filtered_obj, response?.data, response.status);
@@ -63,7 +87,7 @@ router.post(
   })
 );
 
-router.get('/getById/:id', async(req, res) => {
+router.get('/getById/:id', async (req, res) => {
   try {
     const clientId = req?.params?.id
 

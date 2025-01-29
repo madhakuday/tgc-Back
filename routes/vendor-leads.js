@@ -71,7 +71,6 @@ const vendorAuthMiddleware = async (req, res, next) => {
 //     { key: "use_product", q_id: "673299e17309a506a7db0fd9" }, // 17 -
 //     { key: "diagnosed", q_id: "6729aeab127c4b270ff86112" }, // 18 -
 // ];
-// LIVE CHANGE
 
 // // LIVE
 const defaultData = [
@@ -100,8 +99,6 @@ router.post(
     '/lead-by-api',
     vendorAuthMiddleware,
     asyncHandler(async (req, res) => {
-        console.log('123', req.body);
-
         const historyEntry = {
             userId: req.userId,
             campaignId: req.campId,
@@ -197,8 +194,6 @@ router.post(
             await new VendorApiLeadHistory(historyEntry).save();
             return sendSuccessResponse(res, savedLead, 'Lead created successfully', 201);
         } catch (error) {
-            console.log('error123', error);
-
             historyEntry.responseStatus = 400;
             historyEntry.error = JSON.stringify({
                 success: false,

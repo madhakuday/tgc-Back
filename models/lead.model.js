@@ -51,7 +51,9 @@ const leadSchema = new mongoose.Schema({
             'callback',
             'vm',
             'billable',
-            'paid'
+            'paid',
+            'am',
+            'voicemail'
         ],
         required: true,
         default: 'new'

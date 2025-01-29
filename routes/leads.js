@@ -74,7 +74,6 @@ router.get('/',
             }
             delete searchQuery.userId;
         }
-        console.log(searchQuery);
 
         const totalLeads = await Lead.countDocuments(searchQuery);
 

@@ -81,7 +81,10 @@ const statusMap = {
     answering_machine: "Answering Machine",
     callback: "Callback",
     verified: "Verified",
-    vm: "Vm",
+    voicemail: "Voicemail",
+    dead_air: "dead Air",
+    busy: "Busy",
+    caller_hung_up: "Caller Hung Up",
     new: "New",
     under_verification: "Under Verification",
     submitted_to_attorney: "Submitted To Attorney",
@@ -91,13 +94,24 @@ const statusMap = {
     replace: "Replace",
     billable: "Billable",
     paid: "Paid",
+    callback_scheduled: "Callback Scheduled",
+    number_out_of_service: "Number out of service",
+    wrong_number: "Wrong Number",
+
+    already_a_client: "Already A Client",
+    not_interested: "Not Interested",
+    disqualified: "Disqualified",
+    no_answer: "No Answer",
+    ringing: "Ringing",
+    retainer_sent: "retainer Sent",
+    does_not_qualify: "Does Not Qualify",
 };
 
 const statusColors = {
     answering_machine: "#FF6384",
     callback: "#36A2EB",
     verified: "#FFCE56",
-    vm: "#66BB6A",
+    voicemail: "#66BB6A",
     new: "#FFDE00",
     under_verification: "#AB47BC",
     submitted_to_attorney: "#29B6F6",
@@ -109,6 +123,20 @@ const statusColors = {
     replace: "#9CCC65",
     billable: "#0000FF",
     paid: "#50C878",
+    dead_air: "#50C878",
+    busy: "#50C878",
+    caller_hung_up: "#50C878",
+    callback_scheduled: "#50C878",
+    number_out_of_service: "#50C878",
+    wrong_number: "#50C878",
+
+    already_a_client: "#50C878",
+    not_interested: "#50C878",
+    disqualified: "#50C878",
+    no_answer: "#50C878",
+    ringing: "#50C878",
+    retainer_sent: "#50C878",
+    does_not_qualify: "#50C878",
 };
 
 const getUserData = async (req) => {
@@ -131,8 +159,22 @@ const getUserData = async (req) => {
             under_verification: "Under Verification",
             callback: "Callback",
             verified: "Verified",
-            vm: "Vm",
-            submitted_to_attorney: "Submitted To Attorney"
+            voicemail: "Voicemail",
+            callback_scheduled: "Callback Scheduled",
+            dead_air: "Dead Air",
+            busy: "busy",
+            caller_hung_up: "Caller Hung Up",
+            submitted_to_attorney: "Submitted To Attorney",
+            number_out_of_service: "Number Out Of Service",
+            wrong_number: "Wrong Number",
+            
+            already_a_client: "Already A Client",
+            not_interested: "Not Interested",
+            disqualified: "Disqualified",
+            no_answer: "No Answer",
+            ringing: "Ringing",
+            retainer_sent: "retainer Sent",
+            does_not_qualify: "Does Not Qualify",
         };
 
         const statusMapping = {
@@ -148,7 +190,7 @@ const getUserData = async (req) => {
         if (userType === 'admin' || userType === 'subAdmin' || userType == 'vendor') {
             allowedCategories = Object.keys(statusMapping);
         } else if (userType === 'staff') {
-            allowedCategories = ["approved", 'new', 'callback', "verified", 'vm', "submitted_to_attorney"];
+            allowedCategories = ["approved", 'new', 'callback', "verified", 'Voicemail', "submitted_to_attorney"];
         } else {
             return { isDataExist: false, result: [] };
         }
@@ -294,7 +336,7 @@ const getPieChartData = async (req) => {
 
         const dateRange = buildDateRange(timeline, startDate, endDate);
         const allowedStatuses = userType === 'staff'
-            ? ['answering_machine', 'callback', 'verified', 'vm', 'new']
+            ? ['answering_machine', 'callback', 'verified', 'Voicemail', 'new']
             : Object.keys(statusMap);
 
         const matchConditions = await buildMatchConditions(userType, currentUserId, id, role, dateRange, { status: { $in: allowedStatuses }, isActive: true });

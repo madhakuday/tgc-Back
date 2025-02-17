@@ -5,6 +5,7 @@ const User = require('../models/user.model');
 const { logApiCall } = require('../controller/apiLogs')
 const Lead = require('../models/lead.model');
 const asyncHandler = require('../middlewares/asyncHandler');
+const StatusModel = require('../models/status.model');
 const router = express.Router();
 
 const getApiData = (data, headers) => {
@@ -72,7 +73,9 @@ router.post(
         if (!updatedClientIds.includes(clientId)) {
           updatedClientIds.push(clientId);
         }
-        await Lead.findByIdAndUpdate(existingLead?.id, { clientId: updatedClientIds }, { new: true });
+        const submittedStatus = await StatusModel.findOne({ value: 'submitted_to_attorney' });
+
+        await Lead.findByIdAndUpdate(existingLead?.id, { clientId: updatedClientIds, status: submittedStatus.id }, { new: true });
         return sendSuccessResponse(res, response.data, 'Request sent successfully', response.status);
       } else {
         throw new Error()
@@ -86,6 +89,75 @@ router.post(
     }
   })
 );
+
+router.post('/sendToClient/bulk', asyncHandler(async (req, res) => {
+  const { clientId, configuration } = req.body;
+  const client = await User.findById(clientId);
+
+  if (!client || client.userType !== 'client') {
+    return sendErrorResponse(res, 'Invalid client or user type', 403);
+  }
+
+  const { path, method, headers } = client.configuration;
+  if (!path || !method) {
+    return sendErrorResponse(res, 'Invalid client configuration', 400);
+  }
+
+  let successes = [];
+  let failures = [];
+
+  for (const config of configuration.requestBody) {
+    const { leadId, data } = config;
+
+    const filtered_obj = data.reduce((acc, item) => {
+      acc[item.field_name] = item.response || "";
+      return acc;
+    }, {});
+
+    const { body, filtered_headers } = getApiData(filtered_obj, headers);
+
+    try {
+      const response = await axios({
+        url: path,
+        method: method.toLowerCase(),
+        headers: filtered_headers,
+        data: body
+      });
+
+      const result = await logApiCall(clientId, leadId, filtered_obj, response?.data, response.status);
+
+      if (result) {
+        const existingLead = await Lead.findOne({ leadId, isActive: true });
+
+        if (!existingLead) {
+          throw new Error('Lead not found');
+        }
+
+        const updatedClientIds = existingLead.clientId || [];
+        if (!updatedClientIds.includes(clientId)) {
+          updatedClientIds.push(clientId);
+        }
+        const submittedStatus = await StatusModel.findOne({ value: 'submitted_to_attorney' });
+
+        await Lead.findByIdAndUpdate(existingLead?.id, { clientId: updatedClientIds, status: submittedStatus.id }, { new: true });
+        successes.push({ leadId: leadId, status: 'Success', data: response.data });
+      } else {
+        throw new Error('API call failed');
+      }
+    } catch (error) {
+      const statusCode = error.response ? error.response.status : 500;
+      const errorData = error.response ? error.response.data : { message: error.message };
+
+      await logApiCall(clientId, leadId, data, errorData, statusCode);
+      failures.push({ leadId: leadId, status: 'Failed', error: errorData.message || 'Failed to reach client API', statusCode: statusCode });
+    }
+  }
+
+  return res.json({
+    successes,
+    failures
+  });
+}));
 
 router.get('/getById/:id', async (req, res) => {
   try {

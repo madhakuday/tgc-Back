@@ -1,28 +1,56 @@
 const mongoose = require('mongoose');
-const Question = require('../models/question.model'); // Adjust path as necessary
+const StatusModel = require('../models/status.model');
+const { normalizeStatusName } = require('../utils/statusHandler');
 
-const fixedQuestions = [
-    // { title: 'First name', type: 'text', isFixed: true, fixedId: 'first_name' },
-    // { title: 'Last name', type: 'text', isFixed: true, fixedId: 'last_name' },
-    // { title: 'Email', type: 'email', isFixed: true, fixedId: 'email', isUnique: true },
-    // { title: 'Contact Number', type: 'text', isFixed: true, fixedId: 'contact_number', isUnique: true },
-    // { title: 'DOB', type: 'date', isFixed: true, fixedId: 'dob' },
-    { title: 'Address', type: 'text', isFixed: true, fixedId: 'address' },
+const statusNames = [
+    'New',
+    'Under Verification',
+    'Submitted to attorney',
+    'Approve',
+    'Reject',
+    'Verified',
+    'Billable',
+    'Paid',
+    'Pending'
 ];
 
-const seedFixedQuestions = async () => {
-    try {
-        for (const question of fixedQuestions) {
-            const existingQuestion = await Question.findOne({ fixedId: question.fixedId });
+const statusColors = {
+    New: "#FFDE00",
+    Pending: "#FFCE56",
+    "Under Verification": "#AB47BC",
+    "Submitted to attorney": "#29B6F6",
+    Approve: "#008000",
+    Reject: "#DC3545",
+    Verified: "#FFCE56",
+    Billable: "#0000FF",
+    Paid: "#50C878"
+};
 
-            if (!existingQuestion) {
-                await Question.create(question);
-            } else {
-            }
+const statuses = statusNames.map(name => ({
+    name: name,
+    value: normalizeStatusName(name),
+    color: statusColors[name],
+    visibleTo: ['admin', 'vendor'],
+    isEditable: false
+}));
+
+const seedStatuses = async () => {
+    try {
+        for (const status of statuses) {
+            await StatusModel.findOneAndUpdate(
+                { name: status.name },
+                status,
+                { upsert: true, new: true }
+            );
         }
+
+        console.log('✅ Status seeding completed successfully.');
     } catch (error) {
+        console.error('❌ Error seeding statuses:', error);
     }
 };
 
-// Run the seed function on app start
-module.exports = seedFixedQuestions;
+// Run the function
+module.exports = {
+    seedStatuses
+}

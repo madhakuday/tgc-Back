@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const Lead = require("../models/lead.model");
 const User = require("../models/user.model");
 const { monthNames } = require('../utils/constant');
+const { getStatusByUserRole } = require('./status');
+const StatusModel = require('../models/status.model');
 
 const buildDateRange = (timeline, startDate, endDate) => {
     const now = new Date();
@@ -77,67 +79,26 @@ const buildMatchConditions = async (userType, currentUserId, id, role, dateRange
     return matchConditions;
 };
 
-const statusMap = {
-    answering_machine: "Answering Machine",
-    callback: "Callback",
-    verified: "Verified",
-    voicemail: "Voicemail",
-    dead_air: "dead Air",
-    busy: "Busy",
-    caller_hung_up: "Caller Hung Up",
-    new: "New",
-    under_verification: "Under Verification",
-    submitted_to_attorney: "Submitted To Attorney",
-    approve: "Approve",
-    reject: "Reject",
-    return: "Return",
-    replace: "Replace",
-    billable: "Billable",
-    paid: "Paid",
-    callback_scheduled: "Callback Scheduled",
-    number_out_of_service: "Number out of service",
-    wrong_number: "Wrong Number",
+const isStatusAssignedToUser = async (userRole, statusName) => {
+    try {
+        const status = await StatusModel.findOne({ name: statusName, isActive: true });
 
-    already_a_client: "Already A Client",
-    not_interested: "Not Interested",
-    disqualified: "Disqualified",
-    no_answer: "No Answer",
-    ringing: "Ringing",
-    retainer_sent: "retainer Sent",
-    does_not_qualify: "Does Not Qualify",
+        if (!status) {
+            console.error(`Status with name ${statusName} not found or is inactive.`);
+            return false;
+        }
+
+        if (status.visibleTo.includes(userRole)) {
+            return true;
+        } else {
+            return false;
+        }
+    } catch (error) {
+        console.error("Error checking if status is assigned to user:", error);
+        return false;
+    }
 };
 
-const statusColors = {
-    answering_machine: "#FF6384",
-    callback: "#36A2EB",
-    verified: "#FFCE56",
-    voicemail: "#66BB6A",
-    new: "#FFDE00",
-    under_verification: "#AB47BC",
-    submitted_to_attorney: "#29B6F6",
-    approve: "#008000",
-    approved: "#008000",
-    reject: "#DC3545",
-    rejected: "#DC3545",
-    return: "#26A69A",
-    replace: "#9CCC65",
-    billable: "#0000FF",
-    paid: "#50C878",
-    dead_air: "#50C878",
-    busy: "#50C878",
-    caller_hung_up: "#50C878",
-    callback_scheduled: "#50C878",
-    number_out_of_service: "#50C878",
-    wrong_number: "#50C878",
-
-    already_a_client: "#50C878",
-    not_interested: "#50C878",
-    disqualified: "#50C878",
-    no_answer: "#50C878",
-    ringing: "#50C878",
-    retainer_sent: "#50C878",
-    does_not_qualify: "#50C878",
-};
 
 const getUserData = async (req) => {
     try {
@@ -145,55 +106,7 @@ const getUserData = async (req) => {
         const userType = req.user.userType;
         const currentUserId = req.user.id;
 
-        // Define date range
         const dateRange = buildDateRange(timeline, startDate, endDate);
-
-        // Define status categories
-        const statusCategories = {
-            new: "New",
-            pending: "Pending",
-            approved: "Approved",
-            rejected: "Rejected",
-            paid: "Paid",
-            billable: "Billable",
-            under_verification: "Under Verification",
-            callback: "Callback",
-            verified: "Verified",
-            voicemail: "Voicemail",
-            callback_scheduled: "Callback Scheduled",
-            dead_air: "Dead Air",
-            busy: "busy",
-            caller_hung_up: "Caller Hung Up",
-            submitted_to_attorney: "Submitted To Attorney",
-            number_out_of_service: "Number Out Of Service",
-            wrong_number: "Wrong Number",
-            
-            already_a_client: "Already A Client",
-            not_interested: "Not Interested",
-            disqualified: "Disqualified",
-            no_answer: "No Answer",
-            ringing: "Ringing",
-            retainer_sent: "retainer Sent",
-            does_not_qualify: "Does Not Qualify",
-        };
-
-        const statusMapping = {
-            new: ["new"],
-            pending: ["under_verification", "submitted_to_attorney"],
-            approved: ["approve", "verified"],
-            rejected: ["reject"],
-            paid: ["paid"],
-            billable: ["billable"],
-        };
-
-        let allowedCategories = [];
-        if (userType === 'admin' || userType === 'subAdmin' || userType == 'vendor') {
-            allowedCategories = Object.keys(statusMapping);
-        } else if (userType === 'staff') {
-            allowedCategories = ["approved", 'new', 'callback', "verified", 'Voicemail', "submitted_to_attorney"];
-        } else {
-            return { isDataExist: false, result: [] };
-        }
 
         const matchConditions = await buildMatchConditions(
             userType,
@@ -208,64 +121,60 @@ const getUserData = async (req) => {
             { $match: matchConditions },
             {
                 $lookup: {
-                    from: "users",
-                    localField: "userId",
+                    from: "status",
+                    localField: "status",
                     foreignField: "_id",
-                    as: "userDetails",
-                },
+                    as: "statusDetails"
+                }
             },
-            { $unwind: "$userDetails" },
+            { $unwind: "$statusDetails" },
             {
                 $group: {
-                    _id: {
-                        $switch: {
-                            branches: [
-                                { case: { $eq: ["$status", "new"] }, then: "new" },
-                                {
-                                    case: {
-                                        $and: [
-                                            { $in: ["$status", ["under_verification", "submitted_to_attorney"]] },
-                                            { $eq: ["$userDetails.userType", "staff"] },
-                                        ],
-                                    },
-                                    then: "pending",
-                                },
-                                { case: { $in: ["$status", ["approve", "verified"]] }, then: "approved" },
-                                { case: { $eq: ["$status", "reject"] }, then: "rejected" },
-                                { case: { $eq: ["$status", "paid"] }, then: "paid" },
-                                { case: { $eq: ["$status", "billable"] }, then: "billable" },
-                            ],
-                            default: "other",
-                        },
-                    },
-                    count: { $sum: 1 },
-                },
+                    _id: "$statusDetails.name",
+                    count: { $sum: 1 }
+                }
             },
-            { $match: { _id: { $in: allowedCategories } } },
-            { $sort: { _id: 1 } },
+            { $sort: { _id: 1 } }
         ]);
 
-        const result = allowedCategories.map(category => ({
-            title: statusCategories[category],
+        const statusCategories = getStatusCategories();
+        const result = statusCategories.map(category => ({
+            title: category.name,
             value: 0,
-            color: statusColors[category]
+            color: category.color
         }));
 
-        statusCounts.forEach(data => {
-            const categoryIndex = result.findIndex(item => item.title === statusCategories[data._id]);
+        for (const data of statusCounts) {
+            const categoryIndex = result.findIndex(item => item.title === data._id);
             if (categoryIndex !== -1) {
-                result[categoryIndex].value = data.count;
+                const isStatusAssigned = await isStatusAssignedToUser(userType, data._id);
+                if (isStatusAssigned) {
+                    result[categoryIndex].value = data.count;
+                } else {
+                    result[categoryIndex].value = 0;
+                }
             }
-        });
+        }
 
         return {
-            isDataExist: true,
+            isDataExist: result.length > 0,
             result,
         };
     } catch (error) {
         console.error(error);
         throw new Error("Error fetching pie chart data");
     }
+};
+
+const getStatusCategories = () => {
+    return [
+        { name: "New", color: "#FFDE00" },
+        { name: "Pending", color: "#AB47BC" },
+        { name: "Approve", color: "#008000" },
+        { name: "Reject", color: "#DC3545" },
+        { name: "Paid", color: "#50C878" },
+        { name: "Billable", color: "#0000FF" }
+    ];
 };
 
 const getBarChartData = async (req) => {
@@ -335,9 +244,19 @@ const getPieChartData = async (req) => {
         const currentUserId = req.user.id;
 
         const dateRange = buildDateRange(timeline, startDate, endDate);
-        const allowedStatuses = userType === 'staff'
-            ? ['answering_machine', 'callback', 'verified', 'Voicemail', 'new']
-            : Object.keys(statusMap);
+        const statuses = await getStatusByUserRole(req?.user)
+        
+
+        const allowedStatuses = statuses?.statuses?.map((st) => new mongoose.Types.ObjectId(st.id)) || []
+        const colorByStatus = statuses?.statuses?.reduce((acc, st) => {
+            acc[st.id] = st.color;
+            return acc;
+        }, {}) || {};
+
+        const labelByStatus = statuses?.statuses?.reduce((acc, st) => {
+            acc[st.id] = st.name;
+            return acc;
+        }, {}) || {};
 
         const matchConditions = await buildMatchConditions(userType, currentUserId, id, role, dateRange, { status: { $in: allowedStatuses }, isActive: true });
 
@@ -351,9 +270,10 @@ const getPieChartData = async (req) => {
             },
             { $sort: { _id: 1 } }
         ]);
-        const labels = statusCounts.map(data => statusMap[data._id] || data._id);
+
+        const labels = statusCounts.map(data => labelByStatus[data._id] || '-');
         const data = statusCounts.map(data => data.count);
-        const backgroundColor = statusCounts.map(data => statusColors[data._id] || "#CCCCCC");
+        const backgroundColor = statusCounts.map(data => colorByStatus[data._id.toString()] || "#CCCCCC");
 
         return {
             isDataExist: data.length,

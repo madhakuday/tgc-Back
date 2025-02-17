@@ -5,7 +5,8 @@ const User = require('../models/user.model');
 const Lead = require('../models/lead.model');
 const asyncHandler = require('../middlewares/asyncHandler');
 const moment = require('moment');
-const { questionIdMap } = require('../utils/constant');
+const { questionIdMap, onlyAdminStatus } = require('../utils/constant');
+const { default: mongoose } = require('mongoose');
 const router = express.Router();
 
 router.get(
@@ -154,7 +155,7 @@ router.get('/subAdmin',
 
     let searchQuery = { isActive: true };
 
-    if (status) searchQuery.status = status;
+    if (status) searchQuery.status = new mongoose.Types.ObjectId(status);
 
     if (id) searchQuery.userId = id;
 
@@ -201,6 +202,7 @@ router.get('/subAdmin',
     const leads = await Lead.find(searchQuery)
       .populate('userId', 'name email userType')
       .populate('campaignId', 'title isActive userType')
+      .populate('status', 'name value isActive')
       .skip(skip)
       .limit(limitNum)
       .sort({ createdAt: -1 });

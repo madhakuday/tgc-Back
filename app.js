@@ -38,7 +38,6 @@ app.use('/api/media', express.static('public/media'));
 
 // Routes
 app.use('/api', routes);
-
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;

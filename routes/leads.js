@@ -12,14 +12,16 @@ const validate = require('../middlewares/validationMiddleware');
 const ApiLogs = require('../models/api-logs.model');
 const { onlyAdminStatus, questionIdMap } = require('../utils/constant');
 const User = require('../models/user.model');
+const Campaign = require('../models/campaign.model');
 const { validateLeadData } = require('../utils/leadValidator');
 const { buildDateRange } = require('../controller/dashboard');
-
+const StatusModel = require('../models/status.model');
+const {getStatusById} = require('../utils/statusHandler')
 const router = express.Router();
 
 router.get('/',
     asyncHandler(async (req, res) => {
-        const { page = 1, limit = 10, status, userType, campId = '', id = '', assigned, role, timeframe = '', startDate, endDate } = req.query;
+        const { page = 1, limit = 10, status, userType, search = "",  campId = '', id = '', assigned, role, timeframe = '', startDate, endDate } = req.query;
 
         const limitNum = parseInt(limit, 10);
         const pageNum = Math.max(1, parseInt(page, 10));
@@ -29,12 +31,66 @@ router.get('/',
 
         let searchQuery = { isActive: true };
 
-        if (status) {
-            if (status === 'pending') {
-                searchQuery.status = { $in: ["under_verification", "submitted_to_attorney"] };
-            } else {
-                searchQuery.status = status;
+        if (search) {
+            const searchTerm = search.trim();
+            if (searchTerm) {
+                const users = await User.find({
+                    $or: [
+                        { name: { $regex: searchTerm, $options: 'i' } },
+                        { email: { $regex: searchTerm, $options: 'i' } }
+                    ]
+                }).select('_id');
+                const userIds = users.map(user => user._id);
+
+                const campaigns = await Campaign.find({
+                    title: { $regex: searchTerm, $options: 'i' }
+                }).select('_id');
+                const campaignIds = campaigns.map(campaign => campaign._id);
+
+                const searchConditions = [];
+                searchConditions.push({ leadId: { $regex: searchTerm, $options: 'i' } });
+                
+                // ----
+                const targetQuestions = ['first_name', 'email', 'last_name', 'number'];
+                const targetQuestionIds = Object.entries(questionIdMap)
+                    .filter(([id, name]) => targetQuestions.includes(name))
+                    .map(([id, name]) => new mongoose.Types.ObjectId(id));
+
+                if (targetQuestionIds.length > 0) {
+                    searchConditions.push({
+                        responses: {
+                            $elemMatch: {
+                                questionId: { $in: targetQuestionIds },
+                                response: { $regex: searchTerm, $options: 'i' }
+                            }
+                        }
+                    });
+                }
+
+                // ----
+
+                if (userIds.length > 0) {
+                    searchConditions.push({ userId: { $in: userIds } });
+                }
+
+                if (campaignIds.length > 0) {
+                    searchConditions.push({ campaignId: { $in: campaignIds } });
+                }
+
+                if (searchConditions.length > 0) {
+                    searchQuery.$or = searchConditions;
+                } else {
+                    searchQuery.$or = [{ _id: null }];
+                }
             }
+        }
+
+        if (status) {
+            // if (status === 'pending') {
+            //     searchQuery.status = { $in: ["under_verification", "submitted_to_attorney"] };
+            // } else {
+            searchQuery.status = new mongoose.Types.ObjectId(status);
+            // }
         }
 
         if (timeframe) {
@@ -80,6 +136,7 @@ router.get('/',
         const leads = await Lead.find(searchQuery)
             .populate('userId', 'name email userType')
             .populate('campaignId', 'title isActive userType')
+            .populate('status', 'name value')
             .skip(skip)
             .limit(limitNum)
             .sort({ createdAt: -1 });
@@ -168,10 +225,10 @@ router.get('/getAllLeads',
                     leadId: lead.leadId,
                     clientId: lead.clientId,
                     createdBy: {
-                        userId: lead.userId._id,
-                        name: lead.userId.name,
-                        email: lead.userId.email,
-                        userType: lead.userId.userType
+                        userId: lead?.userId?._id,
+                        name: lead?.userId?.name,
+                        email: lead?.userId?.email,
+                        userType: lead?.userId?.userType
                     },
                     status: lead.status,
                     createdAt: lead.createdAt,
@@ -199,6 +256,7 @@ router.get('/:leadId',
 
         const lead = await Lead.findOne(searchQuery)
             .populate('userId', 'name email configuration userType')
+            .populate('status', 'name value')
             .populate({
                 path: 'responses.questionId',
                 model: 'Question',
@@ -215,7 +273,8 @@ router.get('/:leadId',
         const leadHistory = await LeadHistory.find({ leadId: leadId })
             .populate('updatedBy', 'name email userType')
             .populate('sentTo', 'name email')
-            .select('previousStatus currentStatus updatedBy updateType note createdAt sentTo changedBySupAdmin');
+            .select('previousStatus currentStatus updatedBy updateType note createdAt sentTo changedBySupAdmin')
+            .sort({ createdAt: -1 });
 
         const lastClientId = lead?.clientId?.slice(-1)[0];
         let lastClientData = null;
@@ -289,6 +348,7 @@ router.get('/getAssignedLead/:leadId',
 
         const lead = await Lead.findOne(searchQuery)
             .populate('userId', 'name email')
+            .populate('status', 'name value')
             .populate({
                 path: 'responses.questionId',
                 model: 'Question',
@@ -330,6 +390,11 @@ router.post('/',
         try {
             const { responses, campaignId, timeZone } = req.body;
             const userId = req.user.id;
+
+            const defaultStatus = await StatusModel.findOne({ value: 'new' });
+            if (!defaultStatus) {
+                return res.status(500).json({ message: "Default status 'new' not found." });
+            }
 
             // Validate lead data
             const { noIssues } = await validateLeadData(responses);
@@ -373,7 +438,8 @@ router.post('/',
                 responses,
                 campaignId,
                 media,
-                timeZone
+                timeZone,
+                status: defaultStatus._id // status added new
             };
 
             const lead = new Lead(leadData);
@@ -434,13 +500,16 @@ router.put('/:leadId',
                 return res.status(400).json({ message: 'Failed to update lead' });
             }
 
+            const fromStatus = await getStatusById(existingLead.status)
+            const toStatus = await getStatusById(status)
+
             // Log history
             const historyData = {
                 leadId,
                 updatedBy: req.user.id,
                 updateType: status ? 'statusChange' : 'dataUpdate',
                 note: status
-                    ? `Status changed from ${existingLead.status} to ${status}`
+                    ? `Status changed from ${fromStatus?.name} to ${toStatus?.name}`
                     : 'Data updated',
                 previousStatus: existingLead.status,
                 currentStatus: status || existingLead.status,
@@ -480,5 +549,40 @@ router.delete('/:id',
         return sendSuccessResponse(res, lead, 'Lead deleted successfully', 200);
     })
 );
+
+
+router.put('/status/update/bulk', asyncHandler(async (req, res) => {
+    const { statusId, leadIds } = req.body;
+
+    if (!isValidObjectId(statusId)) {
+        return sendErrorResponse(res, 'Invalid status ID', 400);
+    }
+
+    if (!Array.isArray(leadIds)) {
+        return sendErrorResponse(res, 'Invalid lead IDs', 400);
+    }
+
+    const status = await StatusModel.findById(statusId);
+    if (!status) {
+        return sendErrorResponse(res, 'Status not found', 404);
+    }
+
+    const updatedLeads = await Lead.updateMany(
+        { leadId: { $in: leadIds } },
+        { $set: { status: statusId } },
+        { new: true }
+    );
+
+    if (updatedLeads.matchedCount === 0) {
+        return sendErrorResponse(res, 'No leads found', 404);
+    }
+
+    if (updatedLeads.modifiedCount === 0) {
+        return sendErrorResponse(res, 'Lead statuses not updated', 400);
+    }
+
+    return sendSuccessResponse(res, { updatedCount: updatedLeads.modifiedCount }, 'Lead statuses updated successfully', 200);
+}));
+
 
 module.exports = router;

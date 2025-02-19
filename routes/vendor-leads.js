@@ -37,8 +37,9 @@ const vendorAuthMiddleware = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+        console.log('Decoded Token:', decoded);
         req.userId = decoded.userId;
-        req.campId = decoded.campId;
+        req.campId = decoded.campId ? new mongoose.Types.ObjectId(decoded.campId) : null; // Convert to ObjectId
         historyEntry.callerId = decoded.userId;
         next();
     } catch (error) {

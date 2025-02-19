@@ -6,6 +6,7 @@ const asyncHandler = require('../middlewares/asyncHandler');
 const { sendSuccessResponse, sendErrorResponse } = require('../utils/responseHandler');
 const { validateLeadData } = require('../utils/leadValidator');
 const VendorApiLeadHistory = require('../models/vendor-api-lead.model');
+const mongoose = require('mongoose');
 
 const router = express.Router();
 
@@ -39,7 +40,7 @@ const vendorAuthMiddleware = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
         console.log('Decoded Token:', decoded);
         req.userId = decoded.userId;
-        req.campId = decoded.campId ? new mongoose.Types.ObjectId(decoded.campId) : null; // Convert to ObjectId
+        req.campId = decoded?.campId ? new mongoose.Types.ObjectId(decoded.campId) : null; // Convert to ObjectId
         historyEntry.callerId = decoded.userId;
         next();
     } catch (error) {
@@ -131,7 +132,7 @@ router.post(
 
         try {
             const userId = req.userId;
-            const campId = req.campId;
+            const campId = req?.campId || '';
             const requestData = req?.body?.data;
 
             if (!req?.body?.data) {
@@ -185,7 +186,7 @@ router.post(
             const leadData = {
                 leadId,
                 userId,
-                campaignId: campId,
+                campaignId: campId || '',
                 responses: transformedResponses,
                 generated_by_api: true,
             };

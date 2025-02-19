@@ -7,6 +7,7 @@ const { sendSuccessResponse, sendErrorResponse } = require('../utils/responseHan
 const { validateLeadData } = require('../utils/leadValidator');
 const VendorApiLeadHistory = require('../models/vendor-api-lead.model');
 const mongoose = require('mongoose');
+const StatusModel = require('../models/status.model');
 
 const router = express.Router();
 
@@ -45,7 +46,7 @@ const vendorAuthMiddleware = async (req, res, next) => {
         next();
     } catch (error) {
         console.log('Error in validation', error);
-        
+
         historyEntry.error = JSON.stringify(error)
         historyEntry.responseStatus = 401
         await historyEntry.save();
@@ -104,7 +105,7 @@ router.post(
     vendorAuthMiddleware,
     asyncHandler(async (req, res) => {
         console.log('req', req?.userId, req?.campId);
-        
+
         const historyEntry = {
             userId: req.userId,
             campaignId: req?.campId || '',
@@ -183,12 +184,19 @@ router.post(
             let newLeadNumber = lastLeadNumber + 1;
             const leadId = `lead-${newLeadNumber}`;
 
+            const defaultStatus = await StatusModel.findOne({ value: 'new' });
+            if (!defaultStatus) {
+                return res.status(500).json({ message: "Default status 'new' not found." });
+            }
+            console.log(defaultStatus);
+
             const leadData = {
                 leadId,
                 userId,
                 campaignId: campId || '',
                 responses: transformedResponses,
                 generated_by_api: true,
+                status: defaultStatus._id // status added new
             };
 
             const lead = new Lead(leadData);
@@ -200,7 +208,7 @@ router.post(
             return sendSuccessResponse(res, savedLead, 'Lead created successfully', 201);
         } catch (error) {
             console.log('error ->', error);
-            
+
             historyEntry.responseStatus = 400;
             historyEntry.error = JSON.stringify({
                 success: false,

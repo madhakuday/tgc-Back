@@ -43,6 +43,8 @@ const vendorAuthMiddleware = async (req, res, next) => {
         historyEntry.callerId = decoded.userId;
         next();
     } catch (error) {
+        console.log('Error in validation', error);
+        
         historyEntry.error = JSON.stringify(error)
         historyEntry.responseStatus = 401
         await historyEntry.save();
@@ -100,9 +102,11 @@ router.post(
     '/lead-by-api',
     vendorAuthMiddleware,
     asyncHandler(async (req, res) => {
+        console.log('req', req?.userId, req?.campId);
+        
         const historyEntry = {
             userId: req.userId,
-            campaignId: req.campId,
+            campaignId: req?.campId || '',
             accessToken: req.headers.authorization?.split(' ')[1] || null,
             requestBody: req.body,
             responseStatus: null,
@@ -112,6 +116,7 @@ router.post(
             userAgent: req.headers['user-agent'],
             origin: req.headers.origin,
         };
+        console.log('historyEntry', historyEntry);
 
         if (typeof req.body !== 'object' || Array.isArray(req.body) || req.body === null) {
             historyEntry.responseStatus = 400;
@@ -193,6 +198,8 @@ router.post(
             await new VendorApiLeadHistory(historyEntry).save();
             return sendSuccessResponse(res, savedLead, 'Lead created successfully', 201);
         } catch (error) {
+            console.log('error ->', error);
+            
             historyEntry.responseStatus = 400;
             historyEntry.error = JSON.stringify({
                 success: false,

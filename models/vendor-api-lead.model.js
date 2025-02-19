@@ -41,6 +41,12 @@ const vendorApiLeadHistorySchema = new mongoose.Schema({
     timestamps: true
 });
 
+vendorApiLeadHistorySchema.pre('save', function (next) {
+    if (this.campaignId === '') {
+        this.campaignId = null;
+    }
+    next();
+});
 const VendorApiLeadHistory = mongoose.model('VendorApiLeadHistory', vendorApiLeadHistorySchema);
 
 module.exports = VendorApiLeadHistory;

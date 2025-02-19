@@ -4,10 +4,12 @@ const vendorApiLeadHistorySchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
+        default: null,
     },
     campaignId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Campaign',
+        default: null,
     },
     accessToken: {
         type: String,

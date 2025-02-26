@@ -39,7 +39,6 @@ const vendorAuthMiddleware = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-        console.log('Decoded Token:', decoded);
         req.userId = decoded.userId;
         req.campId = decoded?.campId ? new mongoose.Types.ObjectId(decoded.campId) : null; // Convert to ObjectId
         historyEntry.callerId = decoded.userId;
@@ -85,27 +84,28 @@ const defaultData = [
     { key: "address", q_id: "6729a559127c4b270ff85bc5" }, // 4
     { key: "first_name", q_id: "67211e35066e168369880d79" }, // 5
     { key: "last_name", q_id: "67211e35066e168369880d7a" }, // 6
-    { key: "ip_address", q_id: "67211e35066e168369880d7e" }, // 8
-    { key: "lp_url", q_id: "673299bd7309a506a7db0fbd" }, // 9
-    { key: "represented_by_attorney", q_id: "6729a906127c4b270ff85cc4" }, // 10
-    { key: "summary", q_id: "6733f279d1d333e7171e2c79" }, // 11
-    { key: "year_of_diagnosed", q_id: "6729b595127c4b270ff8648d" }, // 12
-    { key: "injury", q_id: "6729aeab127c4b270ff86112" }, // 13
-    { key: "straightener_used", q_id: "6733f2cfd1d333e7171e2c9c" }, // 14
-    { key: "trusted_form_certificate", q_id: "67211e35066e168369880d82" }, // 15
-    { key: "zip_code", q_id: "67211e35066e168369880d7d" }, // 16
+    { key: "ip_address", q_id: "67211e35066e168369880d7e" }, // 7
+    { key: "lp_url", q_id: "673299bd7309a506a7db0fbd" }, // 8
+    { key: "represented_by_attorney", q_id: "6729a906127c4b270ff85cc4" }, // 9
+    { key: "summary", q_id: "6733f279d1d333e7171e2c79" }, // 10
+    { key: "year_of_diagnosed", q_id: "6729b595127c4b270ff8648d" }, // 11
+    { key: "injury", q_id: "6729aeab127c4b270ff86112" }, // 12
+    { key: "straightener_used", q_id: "6733f2cfd1d333e7171e2c9c" }, // 13
+    { key: "trusted_form_certificate", q_id: "67211e35066e168369880d82" }, // 14
+    { key: "zip_code", q_id: "67211e35066e168369880d7d" }, // 15
     // ----
-    { key: "product_name", q_id: "673be5f3f5891ed2fe4a1b31" }, // 17 -
-    { key: "use_product", q_id: "673299e17309a506a7db0fd9" }, // 18 -
+    { key: "product_name", q_id: "673be5f3f5891ed2fe4a1b31" }, // 16 -
+    { key: "use_product", q_id: "673299e17309a506a7db0fd9" }, // 17 -
     { key: "diagnosed", q_id: "673be64df5891ed2fe4a1b56" }, // 18 -
+    { key: "what_product_did_you_use", q_id: "67be650f83ef5f059838a1b3" }, // 19 -
+    { key: "did_you_use_for_more_than_one_year", q_id: "67be653a83ef5f059838a1ba" }, // 20 -
+    { key: "were_you_diagnosed_with_meningioma", q_id: "67be66bb83ef5f059838a37b" }, // 21 -
 ];
 
 router.post(
     '/lead-by-api',
     vendorAuthMiddleware,
     asyncHandler(async (req, res) => {
-        console.log('req', req?.userId, req?.campId);
-
         const historyEntry = {
             userId: req.userId,
             campaignId: req?.campId || '',
@@ -118,7 +118,6 @@ router.post(
             userAgent: req.headers['user-agent'],
             origin: req.headers.origin,
         };
-        console.log('historyEntry', historyEntry);
 
         if (typeof req.body !== 'object' || Array.isArray(req.body) || req.body === null) {
             historyEntry.responseStatus = 400;
@@ -188,7 +187,6 @@ router.post(
             if (!defaultStatus) {
                 return res.status(500).json({ message: "Default status 'new' not found." });
             }
-            console.log(defaultStatus);
 
             const leadData = {
                 leadId,
@@ -208,7 +206,6 @@ router.post(
             return sendSuccessResponse(res, savedLead, 'Lead created successfully', 201);
         } catch (error) {
             console.log('error ->', error);
-
             historyEntry.responseStatus = 400;
             historyEntry.error = JSON.stringify({
                 success: false,

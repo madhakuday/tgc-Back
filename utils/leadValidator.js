@@ -16,9 +16,7 @@ const validateLeadData = async (responses) => {
     const phoneResponse = responses?.find(response => response.questionId === phoneQuestionId);
     const representedByFirmResponse = responses?.find(response => response.questionId === representedByFirmQuestionId);
 
-    if (representedByFirmResponse && representedByFirmResponse.response.toLowerCase() === 'yes') {
-        return { noIssues: true };
-    }
+    const representedByFirm = representedByFirmResponse && representedByFirmResponse.response.toLowerCase() === 'yes';
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (emailResponse && !emailRegex.test(emailResponse.response)) {
@@ -33,10 +31,10 @@ const validateLeadData = async (responses) => {
     });
 
     if (existingLead) {
-        throw new Error('A lead with the same email or phone number already exists.');
+        return { noIssues: false, error: 'A lead with the same email or phone number already exists.', representedByFirm };
     }
 
-    return { noIssues: false };
+    return { noIssues: true, representedByFirm };
 };
 
 module.exports = { validateLeadData };

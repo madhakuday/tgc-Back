@@ -16,12 +16,12 @@ const Campaign = require('../models/campaign.model');
 const { validateLeadData } = require('../utils/leadValidator');
 const { buildDateRange } = require('../controller/dashboard');
 const StatusModel = require('../models/status.model');
-const {getStatusById} = require('../utils/statusHandler')
+const { getStatusById } = require('../utils/statusHandler')
 const router = express.Router();
 
 router.get('/',
     asyncHandler(async (req, res) => {
-        const { page = 1, limit = 10, status, userType, search = "",  campId = '', id = '', assigned, role, timeframe = '', startDate, endDate } = req.query;
+        const { page = 1, limit = 10, status, userType, search = "", campId = '', id = '', assigned, role, timeframe = '', startDate, endDate } = req.query;
 
         const limitNum = parseInt(limit, 10);
         const pageNum = Math.max(1, parseInt(page, 10));
@@ -49,7 +49,7 @@ router.get('/',
 
                 const searchConditions = [];
                 searchConditions.push({ leadId: { $regex: searchTerm, $options: 'i' } });
-                
+
                 // ----
                 const targetQuestions = ['first_name', 'email', 'last_name', 'number'];
                 const targetQuestionIds = Object.entries(questionIdMap)
@@ -396,11 +396,9 @@ router.post('/',
                 return res.status(500).json({ message: "Default status 'new' not found." });
             }
 
-            // Validate lead data
-            const { noIssues } = await validateLeadData(responses);
-
-            if (noIssues) {
-                return sendSuccessResponse(res, {}, 'Thank you for your response. No issues detected.', 201);
+            const { noIssues, representedByFirm, error } = await validateLeadData(responses);
+            if (!noIssues) {
+                return res.status(400).json({ message: error });
             }
 
             let lastLeadNumber = 0;
@@ -439,7 +437,8 @@ router.post('/',
                 campaignId,
                 media,
                 timeZone,
-                status: defaultStatus._id // status added new
+                status: defaultStatus._id,
+                isActive: !representedByFirm
             };
 
             const lead = new Lead(leadData);

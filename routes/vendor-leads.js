@@ -165,14 +165,19 @@ router.post(
             }).filter(response => response !== null);
 
             // Validate lead data
-            const { noIssues } = await validateLeadData(transformedResponses);
+            const { noIssues, representedByFirm, error } = await validateLeadData(transformedResponses);
 
-            if (noIssues) {
-                historyEntry.responseStatus = 201;
-                historyEntry.response = {};
+            if (!noIssues) {
+                historyEntry.responseStatus = 400;
+                historyEntry.error = {
+                    success: false,
+                    message: error,
+                    errors: [],
+                };
                 await new VendorApiLeadHistory(historyEntry).save();
-                return sendSuccessResponse(res, {}, 'Thank you for your response. No issues detected.', 201);
+                return sendErrorResponse(res, error, 400);
             }
+
 
             let lastLeadNumber = 0;
             const lastLead = await Lead.findOne().sort({ createdAt: -1 });
@@ -194,7 +199,8 @@ router.post(
                 campaignId: campId || '',
                 responses: transformedResponses,
                 generated_by_api: true,
-                status: defaultStatus._id // status added new
+                status: defaultStatus._id, // status added new
+                isActive: !representedByFirm
             };
 
             const lead = new Lead(leadData);

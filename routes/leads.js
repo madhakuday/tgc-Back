@@ -444,6 +444,11 @@ router.post('/',
             const lead = new Lead(leadData);
             const savedLead = await lead.save();
 
+            // If user selected "Yes" for "Represented by Firm", return success message without lead details
+            if (representedByFirm) {
+                return sendSuccessResponse(res, {}, 'Thank you for your response. No issues detected.', 201);
+            }
+
             return sendSuccessResponse(res, savedLead, 'Lead created successfully', 201);
         } catch (error) {
             res.status(400).json({ message: error.message });

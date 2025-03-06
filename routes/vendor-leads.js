@@ -206,6 +206,15 @@ router.post(
             const lead = new Lead(leadData);
             const savedLead = await lead.save();
 
+            // If user selected "Yes" for "Represented by Firm", return success message without lead details
+            if (representedByFirm) {
+                historyEntry.responseStatus = 201;
+                historyEntry.response = {};
+                await new VendorApiLeadHistory(historyEntry).save();
+                return sendSuccessResponse(res, {}, 'Thank you for your response. No issues detected.', 201);
+            }
+
+
             historyEntry.responseStatus = 201;
             historyEntry.response = savedLead;
             await new VendorApiLeadHistory(historyEntry).save();

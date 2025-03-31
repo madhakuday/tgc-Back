@@ -101,7 +101,10 @@ const defaultData = [
     { key: "did_you_use_for_more_than_one_year", q_id: "67be653a83ef5f059838a1ba" }, // 20 -
     { key: "were_you_diagnosed_with_meningioma", q_id: "67be66bb83ef5f059838a37b" }, // 21 -
     { key: "date_of_diagnosed", q_id: "6729a821127c4b270ff85c77" }, // 22 -
-    { key: "use_state", q_id: "673299a07309a506a7db0fb6" }, // 22 -
+    { key: "use_state", q_id: "673299a07309a506a7db0fb6" }, // 23 -
+    { key: "street", q_id: "67eaa020d771199786aa0777" }, // 24 -
+    { key: "city", q_id: "6729bb2f127c4b270ff86ac0" }, // 25 -
+    { key: "abuse_type", q_id: "673bcc34f5891ed2fe4a1902" }, // 25 -
 ];
 
 router.post(

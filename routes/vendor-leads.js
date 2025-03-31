@@ -100,6 +100,8 @@ const defaultData = [
     { key: "what_product_did_you_use", q_id: "67be650f83ef5f059838a1b3" }, // 19 -
     { key: "did_you_use_for_more_than_one_year", q_id: "67be653a83ef5f059838a1ba" }, // 20 -
     { key: "were_you_diagnosed_with_meningioma", q_id: "67be66bb83ef5f059838a37b" }, // 21 -
+    { key: "date_of_diagnosed", q_id: "6729a821127c4b270ff85c77" }, // 22 -
+    { key: "use_state", q_id: "673299a07309a506a7db0fb6" }, // 22 -
 ];
 
 router.post(
